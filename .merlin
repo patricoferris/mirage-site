@@ -1,0 +1,4 @@
+PKG mirage mirage-kv cohttp cohttp-lwt lwt re2 core-kernel log
+
+B src/_build/**
+S src/
