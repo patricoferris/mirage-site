@@ -105,7 +105,23 @@ let main () =
     "Server.Run" (http @-> job)
 ```
 
-In the last lines of the configuration file, we finally register our new application with the `register` function.
+`$`
+----
+
+The `$` operator is again just more syntactic sugar - it applies functors and modules. So in the code below `http $ cohttp_server (conduit_direct stack)` is applying the `http` functor to the module you get by taking the `cohttp_server` function and applying the `(conduit_direct stack)` conduit implementation. 
+
+```ocaml
+type _ impl =
+    | Impl: 'ty Typ.configurable -> 'ty impl (* base implementation *)
+    | App: ('a, 'b) app -> 'b impl           (* functor application *)
+    | If: bool Key.value * 'a impl * 'a impl -> 'a impl
+
+let ($) f x = App { f; x }
+
+let () =
+  register "run" [(http $ cohttp_server (conduit_direct stack)) $ filesfs]
+
+```
 
 ------
 
