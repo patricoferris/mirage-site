@@ -3,6 +3,16 @@
 
 ** Status: Under Construction **
 
+How to run the server? 
+
+```
+cd src 
+mirage configure -t <backend>
+make depend 
+make 
+_build/main.native --http-port 4000
+```
+
 This personal website was built using the MirageOS library and largely inspired by [its website](https://mirage.io). This README acts as documentation for how it was built and so should hopefully help anyone else looking to get their feet wet with Mirage and Unikernels. 
 
 What is a Unikernel? 
