@@ -1,4 +1,4 @@
-PKG mirage mirage-kv cohttp cohttp-lwt lwt re2 core-kernel log
+PKG mirage mirage-kv cohttp cohttp-lwt lwt re2 core-kernel log yaml omd cowabloga cow www-types conduit-mirage
 
 B src/_build/**
 S src/

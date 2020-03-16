@@ -1,4 +1,4 @@
-# Personal Website for 2020
+# Lawrence
 ---------------------------
 
 ** Status: Under Construction **
@@ -19,9 +19,10 @@ What is a Unikernel?
 ------
 **TODO**
 
-What is MirageOS?
+What is [MirageOS](https://mirage.io/)?
 ------
-**TODO**
+
+MirageOS is a library operating system. It allows you to build specific appliances for a particular purpose - *Unikernels*. A large number of applications exist today sitting on top of a large amount of code called the Operating System which handles networking, the filesystem etc. 
 
 *THE CONFIGURE FILE*
 

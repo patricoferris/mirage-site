@@ -19,11 +19,21 @@ let host_key =
   in
   Key.(create "host" Arg.(opt string "localhost" doc))
 
-let keys = Key.([abstract http_port; abstract https_port; abstract host_key])
-let packages = [ package "cohttp-mirage"; package "re2" ]
+let keys = Key.([ abstract host_key; abstract http_port; abstract https_port])
+let packages = [ 
+  package "cohttp-mirage"; 
+  package "cow";
+  package "cowabloga"; 
+  package "yaml"; 
+  package "omd";
+  package "duration";
+  package "ptime";
+  package ~min:"2.0.0" "mirage-kv";
+]
 
 (********* Setting up implementations *********)
-let stack = generic_stackv4 default_network
+let stack = generic_stackv4 default_network 
+let blogsfs = generic_kv_ro ~key:fs_key "../blogs"
 let filesfs = generic_kv_ro ~key:fs_key "../files"
 
 (******** MAIN FUNCTIONS *********)
@@ -31,7 +41,8 @@ let http =
   foreign
     ~keys
     ~packages
-    "Server.Run" (http @-> kv_ro @-> job)
+    "Server.Make" (http @-> kv_ro @-> kv_ro @-> pclock @-> job)
 
 let () =
-  register "run" [(http $ cohttp_server (conduit_direct stack)) $ filesfs]
+  let conduit = cohttp_server @@ conduit_direct stack in  
+  register "run" [http $ conduit $ filesfs $ blogsfs $ default_posix_clock]
