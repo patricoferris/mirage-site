@@ -11,6 +11,12 @@ type t = {
 
 let blog_home ~blogs = ()
 
+let wrap_blog blog = 
+  let title = blog.title in 
+  let header = gen_header ~title ~css:(Html "<link rel=\"stylesheet\" href=\"/main.css\">") in 
+  let content = blog.content in 
+    {blog with content = wrapper ~header ~body:content}
+
 let not_found = {
   authors = [" Not Found "];
   updated = None; 

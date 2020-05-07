@@ -19,41 +19,50 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
     | Ok data -> data
     | Error e -> err "%a" CONT.pp_error e
 
-  let read_entry content name = content_read content name >|= Parser.YamlMarkdown.of_string 
-
-  (* ~ A helper for headers 
+  (* ~ A helper for headers ~
    * A little function for constructing HTTP headers *)
   let get_headers hdr_type length = 
     Cohttp.Header.of_list
       [ "content-length", string_of_int length;
-      "content-type", hdr_type;
-      "connection", "close" ]
+        "content-type", hdr_type;
+        "connection", "close" ]
 
   (* ~ Blog Handler ~ 
    * A helper function for constructing blog posts and serving them up! *)
-  let blog device blog_name =
+  let blog_handler device blog_name =
     let content = content_read device blog_name >|= Parser.YamlMarkdown.of_string in 
     let response = content >>= (function 
       | Ok blog -> 
-        let Html body = blog.content in 
+        let Html body = (Blog.wrap_blog blog).content in 
         let headers = get_headers "text/html" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false () 
       | Error (`MalformedBlogPost e) -> S.respond_error ~body:(blog_name ^ " " ^ e) ()
       | Error _ -> S.respond_not_found ~uri:(Uri.of_string blog_name) ()
      ) in response
 
+  (* ~ Static File Handler ~
+   * Serves up files like index.html, main.css, javascript etc. *)
+  let static_file_handler device filename = 
+    let filename = if List.length filename == 1 then List.hd filename else "unknown" in 
+    let filename = if filename = "" || filename = "/" then "index.html" else filename in
+    file_read device filename >>= function
+      | body -> begin match Fpath.get_ext (Fpath.v filename) with
+        | ".html" -> let headers = get_headers "text/html" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | ".css" -> let headers = get_headers "text/css" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | _-> S.respond_not_found ~uri:(Uri.of_string filename) ()
+      end
 
   (* ~ The Router ~
    * Unsurprisingly handles sending data to clients. For blog posts 
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
-  let router _fs cont uri = 
+  let router fs cont uri = 
     let body = "<h1>Hi</h1>" in 
-    let headers = get_headers "text/html" (String.length body) in match uri with  
-      | [""] | ["index.html"] -> S.respond_string ~headers ~body ~status:`OK ~flush:false
-      | "blog" :: tl -> fun () -> blog cont (String.concat "" (tl @ [".md"])) 
-      | _ -> S.respond_string ~headers ~body:"hmmm!" ~status:`OK ~flush:false
-    
+    let headers = get_headers "text/html" (String.length body) in match uri with 
+      | "blog" :: tl -> fun () -> blog_handler cont (String.concat "" (tl @ [".md"])) 
+      | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 
     let dom::p = String.split_on_char '/' path in p 
@@ -70,7 +79,6 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
     S.make ~callback ~conn_closed ()
   
   let start server fs cont () =
-    (* let x = content_read cont in *)
     let host = Key_gen.host () in 
     let domain = `Http , host in  
     let callback = create domain (router fs cont) in

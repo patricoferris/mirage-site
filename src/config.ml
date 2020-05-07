@@ -26,6 +26,7 @@ let packages = [
   package "cowabloga"; 
   package "yaml"; 
   package "omd";
+  package "fpath";
   package "duration";
   package "ptime";
   package ~min:"2.0.0" "mirage-kv";
