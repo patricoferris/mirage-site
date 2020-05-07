@@ -11,7 +11,7 @@ module YamlMarkdown = struct
     title = "The Empty Post";
     tags = None; 
     subtitle = None;
-    content = Html ""
+    content = Html "A sad, sad time when there was no content 🐫..."
   }
 
   let extract_yaml lines = 
@@ -42,7 +42,7 @@ module YamlMarkdown = struct
     | ("title", `String title) :: xs -> match_yaml ({post with title}) xs 
     | ("subtitle", `String subtitle) :: xs -> match_yaml ({post with subtitle = (Some subtitle)}) xs 
     | ("updated", `String updated) :: xs -> match_yaml ({post with updated = (parse_date updated)}) xs 
-    | _ -> None 
+    | _ -> None
 
   let blogify yaml content = 
     let yaml = Yaml.of_string_exn (String.concat "\n" yaml) in 
@@ -50,13 +50,13 @@ module YamlMarkdown = struct
       | (`O kvpairs) -> match_yaml empty_post kvpairs
       | _ -> None in 
     let post = build_post yaml in match post with 
-      | Some post -> Ok ({post with content = Html (Omd.to_html (Omd.of_string content))})
-      | None -> Error (`MalformedBlogPost content)
+      | Some post -> Ok ({post with content = Html (Omd.to_html (Omd.of_string (post.title ^ content)))})
+      | None -> Error (`MalformedBlogPost ("Building Failed: " ^ content))
 
   let of_string content = 
     (* Extract the YAML header *)
     let lines = String.split_on_char '\n' content in 
     let yaml_body = extract_yaml lines in match yaml_body with 
       | Some (yaml, body) -> blogify yaml (String.concat "\n" body) 
-      | None -> Error (`MalformedBlogPost content)
+      | None -> Error (`MalformedBlogPost ("Extracting Yaml Failed: " ^ content))
 end 

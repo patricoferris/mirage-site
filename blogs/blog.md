@@ -1,7 +1,8 @@
 ---
-author: Patrick Ferris 
+authors: 
+  - Patrick Ferris 
 title: A Mirage Blog
-date: 2020-01-22
+updated: 2020-01-22
 tags:
   - mirage
   - unikernel
@@ -9,7 +10,7 @@ tags:
 
 MirageOS is a library Operating System designed for building specific, well-performing unikernels to run a myriad of applications. This post will cover how this site was setup inspired primarily from the [Mirage](https://mirage.io) website. 
 
-# Overall Architecture 
+## Overall Architecture 
 
 This isn't the post to explain about unikernels or MirageOS. 
 

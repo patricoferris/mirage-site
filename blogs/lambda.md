@@ -1,11 +1,12 @@
 ---
-author: Patrick Ferris 
+authors: 
+  - Patrick Ferris 
 title: A Tale of Two Lambdas
-date: 2020-01-22
+updated: 2020-01-22
 tags:
   - compiler
-    ocaml 
-    assembly
+  - ocaml 
+  - assembly
 ---
 
 Parsed and type-checked. We are now somewhere deep in the pipeline with seemingly no end in sight. Our focus is now on getting down to machine code. As we've seen, each stage of the pipeline is removing levels of abstraction. Assembly is not typed... or [is it](https://www.cs.cornell.edu/talc/). When we're running on a CPU the notion of a module is not important - we need the instruction by instruction sequence that is going to run the program we want. 

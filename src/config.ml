@@ -34,7 +34,7 @@ let packages = [
 (********* Setting up implementations *********)
 let stack = generic_stackv4 default_network 
 let blogsfs = generic_kv_ro ~key:fs_key "../blogs"
-let filesfs = generic_kv_ro ~key:fs_key "../files"
+let filesfs = generic_kv_ro ~key:fs_key "../static"
 
 (******** MAIN FUNCTIONS *********)
 let http =

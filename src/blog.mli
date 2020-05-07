@@ -5,9 +5,7 @@ type t = {
   tags: string list option;
   subtitle: string option;
   content: Html.t
-}
+} (** The type of blog posts*)
 
 val blog_home : blogs:t list ->  unit
-
-val serve: blogs:(string * ([> `Not_found ] as 'a)) list -> (string -> 'a) Lwt.t
-(** A function for serving blog posts *) 
+(** Hmmm... a blog homepage for the future *)

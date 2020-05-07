@@ -1,7 +1,8 @@
 ---
-author: Patrick Ferris 
+authors: 
+  - Patrick Ferris 
 title: OCaml types - Beyond variants and records
-date: 2020-01-22
+updated: 2020-01-22
 tags:
   - types
   - intermediate

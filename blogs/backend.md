@@ -1,7 +1,8 @@
 ---
-author: Patrick Ferris 
+authors:
+  - Patrick Ferris 
 title: CMM, Mach and Linear
-date: 2020-01-22
+updated: 2020-01-22
 tags:
   - compiler
   - ocaml 

@@ -1,3 +1,5 @@
+open Html
+
 type t = {
   authors: string list;
   updated: Date.t option; 
@@ -8,14 +10,12 @@ type t = {
 }
 
 let blog_home ~blogs = ()
-  
-let serve ~blogs = 
-  let blog_entry x =
-    try List.assoc x blogs
-    with Not_found -> `Not_found 
-  in 
-  let f = function 
-    | "index.html" | "" -> `Not_found
-    | x -> blog_entry x
-  in 
-    Lwt.return f 
+
+let not_found = {
+  authors = [" Not Found "];
+  updated = None; 
+  title = "Page Not Found"; 
+  tags = None; 
+  subtitle = None; 
+  content = Html "Not Found :("
+}
