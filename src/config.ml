@@ -33,7 +33,8 @@ let packages = [
 
 (********* Setting up implementations *********)
 let stack = generic_stackv4 default_network 
-let blogsfs = generic_kv_ro ~key:fs_key "../blogs"
+let cond = conduit_direct stack 
+let resolver = resolver_dns stack
 let filesfs = generic_kv_ro ~key:fs_key "../static"
 
 (******** MAIN FUNCTIONS *********)
@@ -41,8 +42,8 @@ let http =
   foreign
     ~keys
     ~packages
-    "Server.Make" (http @-> kv_ro @-> kv_ro @-> pclock @-> job)
+    "Server.Make" (http @-> kv_ro @-> Mirage.resolver @-> Mirage.conduit @-> pclock @-> job)
 
 let () =
   let conduit = cohttp_server @@ conduit_direct stack in  
-  register "run" [http $ conduit $ filesfs $ blogsfs $ default_posix_clock]
+  register "run" [http $ conduit $ filesfs $ resolver $ cond $ default_posix_clock]
