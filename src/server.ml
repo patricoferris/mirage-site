@@ -2,22 +2,36 @@ open Lwt.Infix
 open Cohttp
 let err fmt = Fmt.kstrf failwith fmt
 
-module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Clock: Mirage_clock.PCLOCK) = struct
+module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C : Conduit_mirage.S) (Clock: Mirage_clock.PCLOCK) = struct
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
 
-  let log_src = Logs.Src.create "dispatch" ~doc:"Web server"  
+  let log_src = Logs.Src.create "server" ~doc:"server"  
   module Log = (val Logs.src_log log_src : Logs.LOG)
+  let log_info s = Log.info (fun f -> f "%s" s)
 
   (* ~ Reading Files ~ 
-   * Using the FileSystem and CONTent modules which are Mirage key-value stores.
+   * Using the FileSystem (FS) which is Mirage key-value stores.
    * They are Read-Only stores built using the static and blogs directories *)
   let file_read device key = FS.get device (Mirage_kv.Key.v key) >|= function 
     | Ok data -> data 
     | Error e -> err "%a" FS.pp_error e
-  
-  let content_read content name = CONT.get content (Mirage_kv.Key.v name) >|= function
+
+  (* ~ Irmin + Mirage ~ 
+   * Using Irmin we can create a Mirage KV_RO for blogs *)
+  module Store = Irmin_mirage_git.Mem.KV(Irmin.Contents.String)
+  module Sync = Irmin.Sync(Store)
+  module Blog_store = Irmin_mirage_git.Mem.KV_RO 
+
+  (* Initialising the blog store with a uri and a repo *)
+  let init_blog_store ~resolver ~conduit ~uri = 
+    let in_mem_config = Irmin_mem.config () in   
+      Store.Repo.v in_mem_config >|= Store.git_of_repo >>= fun repo -> 
+      Blog_store.connect ~resolver ~conduit repo uri 
+
+  (* To stay... Miragey the content has the same interface, a Mirage KV RO store... but we fill it from Irmin *)
+  let content_read content name = Blog_store.get content (Mirage_kv.Key.v name) >|= function
     | Ok data -> data
-    | Error e -> err "%a" CONT.pp_error e
+    | Error e -> err "%a" Blog_store.pp_error e
 
   (* ~ A helper for headers ~
    * A little function for constructing HTTP headers *)
@@ -56,6 +70,9 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
         | _-> S.respond_not_found ~uri:(Uri.of_string filename) ()
       end
 
+  (* ~ Irmin magic ~
+   * We can, at runtime, use Irmin to update the KV store... coming soon...*)
+
   (* ~ The Router ~
    * Unsurprisingly handles sending data to clients. For blog posts 
    * it first has to generate the html instead of just sending down 
@@ -64,7 +81,7 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
     let body = "<h1>Hi</h1>" in 
     let headers = get_headers "text/html" (String.length body) in match uri with 
       (* | ["blog"] -> fun () -> Blog.blog_home  *)
-      | "blog" :: tl -> fun () -> blog_handler cont (String.concat "" (tl @ [".md"])) 
+      | "blog" :: tl -> fun () -> blog_handler cont ("blogs/" ^ (String.concat "" (tl @ [".md"])))
       | "images" :: tl -> fun () -> static_file_handler fs tl
       | _ -> fun () -> static_file_handler fs uri
 
@@ -82,9 +99,10 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
     in
     S.make ~callback ~conn_closed ()
   
-  let start server fs cont () =
+  let start server fs resolver conduit () =
     let host = Key_gen.host () in 
-    let domain = `Http , host in  
+    let domain = `Http , host in 
+    init_blog_store ~resolver ~conduit ~uri:"git://github.com/patricoferris/lawrence.git" >>= fun cont ->
     let callback = create domain (router fs cont) in
     let port = Key_gen.http_port () in 
     server (`TCP port) callback
