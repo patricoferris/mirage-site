@@ -51,6 +51,8 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
         | ".css" -> let headers = get_headers "text/css" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | ".jpg" -> let headers = get_headers "image/jpg" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false ()
         | _-> S.respond_not_found ~uri:(Uri.of_string filename) ()
       end
 
@@ -61,7 +63,9 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (CONT: Mirage_kv.RO) (Cl
   let router fs cont uri = 
     let body = "<h1>Hi</h1>" in 
     let headers = get_headers "text/html" (String.length body) in match uri with 
+      (* | ["blog"] -> fun () -> Blog.blog_home  *)
       | "blog" :: tl -> fun () -> blog_handler cont (String.concat "" (tl @ [".md"])) 
+      | "images" :: tl -> fun () -> static_file_handler fs tl
       | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 

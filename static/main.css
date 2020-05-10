@@ -1,3 +1,64 @@
-p {
-  color: orange;
+html {
+  font-family: 'Ubuntu', sans-serif;
+  font-size: 1.1em;
+}
+
+.content {
+  padding: 0% 20%;
+}
+
+img {
+  width: 100%;
+}
+
+.nav {
+  margin-bottom: 40px;
+}
+
+/* Very simple container system */
+.container-two-by-one {
+  display: grid;
+  grid-template-columns: 47.25% 47.25%;
+  column-gap: 5%;
+  justify-items: center;
+  align-items: center;
+  grid-template-rows: 100%;
+  margin: 15px 0px;
+}
+
+.container-three-by-one {
+  display: grid;
+  grid-template-columns: 30% 30% 30%;
+  column-gap: 5%;
+  justify-items: center;
+  align-items: center;
+  grid-template-rows: 100%;
+  margin: 15px 0px; 
+}
+
+.one-one {
+  grid-column: 1;
+  grid-row: 1;
+}
+.one-two {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.one-three {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.one-span-two-three {
+  grid-column: 2 / span 2;
+  grid-row: 1;
+}
+
+/* Blog Post Handling */
+
+code {
+  color : orange; 
+  font-size: 1.2em;
+  background-color: rgb(236, 236, 236);
 }

@@ -8,5 +8,5 @@ type t = {
 } (** The type of blog posts*)
 
 val wrap_blog : t -> t
-val blog_home : blogs:t list ->  unit
+val blog_home : blogs:t list -> Html.t
 (** Hmmm... a blog homepage for the future *)

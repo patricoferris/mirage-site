@@ -22,8 +22,7 @@ let host_key =
 let keys = Key.([ abstract host_key; abstract http_port; abstract https_port])
 let packages = [ 
   package "cohttp-mirage"; 
-  package "cow";
-  package "cowabloga"; 
+  package "irmin-mirage-git";
   package "yaml"; 
   package "omd";
   package "fpath";
