@@ -63,3 +63,28 @@ List.map
 
 This short example comes directly from the [pages module](https://github.com/patricoferris/mirage-site/blob/master/src/pages.ml). We generate links to each of the blog posts being passed into the function (this is just the key from our Irmin store, more on that soon). 
 
+
+## Irmin
+
+Irmin is powerful library for creating and interacting with Git-like datastores. For this blog, it creates an in-memory key-value store using the Mirage backend for Irmin. 
+
+With an in-memory Gite store we can actually - at runtime - sync our content just like syncing a git repository with `git pull`! This means we can update our content, push to wherever we are holding it and synchronise our unikernel all without having to rebuild it.
+
+To do this, the unikernel accepts a `git-remote` key. It then initialises the Irmin store and exposes an endpoint which can be used to synchronise the content of the blog. 
+
+```ocaml
+(* Building modules using functors *)
+module Store = Irmin_mirage_git.Mem.KV(Irmin.Contents.String)
+module Sync = Irmin.Sync(Store)
+
+(* A type for holding stores and remotes *)
+type git_store = {store: Store.t; remote: Irmin.remote}
+
+(* Initialising the blog store with a uri and a repo *)
+let init_blog_store ~resolver ~conduit ~uri = 
+  let in_mem_config = Irmin_mem.config () in   
+    Store.Repo.v in_mem_config >>= Store.master >|= fun repo -> 
+    {store = repo; remote = Store.remote ~resolver ~conduit uri}
+```
+
+The `Store.t` is used for querying the contents of our in-memory datastore whilst the `Irmin.remote` is for syncing. 
