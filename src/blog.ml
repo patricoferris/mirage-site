@@ -1,4 +1,4 @@
-open Html
+open Tyxml
 
 type t = {
   authors: string list;
@@ -6,24 +6,14 @@ type t = {
   title: string;
   tags: string list option;
   subtitle: string option;
-  content: Html.t;
+  content: Tyxml.Html.doc;
 }
 
-let blog_home ~blogs = 
-  let build_component blog = 
-    Html "<div>" ++
-      Html blog.title ++
-    Html "</div>" in
-  let blog_components = List.map build_component blogs in
-    List.fold_left (fun acc comp -> acc ++ comp) (Html "") blog_components
+let blog_temp content = [%html
+    "<div class='content'>"[content]"</div>"
+]
 
-let wrap_blog blog = 
-  let title = blog.title in 
-  let content_div = wrap ~before:(Html "<div class=\"content\">") ~after:(Html "</div>") in 
-  let css = gen_css ++ (Html "<link rel=\"stylesheet\" href=\"/main.css\">") in 
-  let header = gen_header ~title ~css in 
-  let content = content_div blog.content in 
-    {blog with content = wrapper ~header ~body:content}
+let to_html blog = Format.asprintf "%a" (Tyxml.Html.pp ()) blog.content;;
 
 let not_found = {
   authors = [" Not Found "];
@@ -31,5 +21,5 @@ let not_found = {
   title = "Page Not Found"; 
   tags = None; 
   subtitle = None; 
-  content = Html "<h1>🐫🐫🐫 Not Found 🐫🐫🐫</h1>"
+  content = Tyxml.Html.(html (head (title (txt "Not found...")) []) (body [div [h1 [txt "🐫🐫🐫 Not Found 🐫🐫🐫"]]]))
 }

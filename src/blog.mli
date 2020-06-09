@@ -1,12 +1,12 @@
+open Tyxml
+
 type t = {
   authors: string list;
   updated: Date.t option;
   title: string;
   tags: string list option;
   subtitle: string option;
-  content: Html.t
+  content:  Tyxml.Html.doc;
 } (** The type of blog posts*)
 
-val wrap_blog : t -> t
-val blog_home : blogs:t list -> Html.t
-(** Hmmm... a blog homepage for the future *)
+val to_html : t -> string 

@@ -21,9 +21,11 @@ let host_key =
 
 let keys = Key.([ abstract host_key; abstract http_port; abstract https_port])
 let packages = [ 
+  package "tyxml-ppx";
+  package "tyxml";
   package "cohttp-mirage"; 
   package "irmin-mirage-git";
-  package "yaml"; 
+  package "yaml";
   package "omd";
   package "fpath";
   package "duration";

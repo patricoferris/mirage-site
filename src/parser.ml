@@ -17,7 +17,7 @@ module YamlMarkdown = struct
     title = "The Empty Post";
     tags = None; 
     subtitle = None;
-    content = Html "A sad, sad time when there was no content 🐫..."
+    content = Tyxml.Html.(html (head (title (txt "Not found...")) []) (body [div [h1 [txt "🐫🐫🐫 Not Found 🐫🐫🐫"]]]))
   }
 
   let extract_yaml lines = 
@@ -56,7 +56,7 @@ module YamlMarkdown = struct
       | (`O kvpairs) -> match_yaml empty_post kvpairs
       | _ -> None in 
     let post = build_post yaml in match post with 
-      | Some post -> Ok ({post with content = Html (Omd.to_html (Omd.of_string (post.title ^ content)))})
+      | Some post -> Ok ({post with content = Pages.page_template ~title:post.title ~content:(Omd.(to_html (of_string content))) })
       | None -> Error (`MalformedBlogPost ("Building Failed: " ^ content))
 
   let of_string content = 

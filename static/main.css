@@ -3,8 +3,22 @@ html {
   font-size: 1.1em;
 }
 
+a {
+  text-decoration: none;
+  color: orange;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+p, li {
+  line-height: 145%;
+  margin: 2% 0%;
+}
+
 .content {
-  padding: 0% 20%;
+  padding: 0% 21%;
 }
 
 img {
@@ -13,6 +27,21 @@ img {
 
 .nav {
   margin-bottom: 40px;
+}
+
+/* Flex rules */
+.flex-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-container > div {
+  background-color: #f1f1f1;
+  width: 100px;
+  margin: 10px;
+  text-align: center;
+  line-height: 75px;
+  font-size: 30px;
 }
 
 /* Very simple container system */
@@ -53,12 +82,4 @@ img {
 .one-span-two-three {
   grid-column: 2 / span 2;
   grid-row: 1;
-}
-
-/* Blog Post Handling */
-
-code {
-  color : orange; 
-  font-size: 1.2em;
-  background-color: rgb(236, 236, 236);
 }

@@ -1,6 +1,7 @@
 open Lwt.Infix
 open Cohttp
 let err fmt = Fmt.kstrf failwith fmt
+let concat ss = String.concat "/" ss
 
 module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C : Conduit_mirage.S) (Clock: Mirage_clock.PCLOCK) = struct
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
@@ -20,18 +21,27 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
    * Using Irmin we can create a Mirage KV_RO for blogs *)
   module Store = Irmin_mirage_git.Mem.KV(Irmin.Contents.String)
   module Sync = Irmin.Sync(Store)
-  module Blog_store = Irmin_mirage_git.Mem.KV_RO 
+
+  type git_store = {store: Store.t; remote: Irmin.remote}
 
   (* Initialising the blog store with a uri and a repo *)
   let init_blog_store ~resolver ~conduit ~uri = 
     let in_mem_config = Irmin_mem.config () in   
-      Store.Repo.v in_mem_config >|= Store.git_of_repo >>= fun repo -> 
-      Blog_store.connect ~resolver ~conduit repo uri 
+      Store.Repo.v in_mem_config >>= Store.master >|= fun repo -> 
+      {store = repo; remote = Store.remote ~resolver ~conduit uri}
+
+  (* ~ Irmin magic ~
+   * We can, at runtime, use Irmin to update the KV store...*)
+   let sync remote =
+    let in_mem_config = Irmin_mem.config () in   
+      Store.Repo.v in_mem_config >>= Store.master >>= fun t ->
+      Sync.pull_exn t remote `Set
 
   (* To stay... Miragey the content has the same interface, a Mirage KV RO store... but we fill it from Irmin *)
-  let content_read content name = Blog_store.get content (Mirage_kv.Key.v name) >|= function
-    | Ok data -> data
-    | Error e -> err "%a" Blog_store.pp_error e
+  let content_read store name = 
+    Store.find store name >|= function
+      | Some data -> data
+      | None -> err "%s" ("Could not find: " ^ (concat name))
 
   (* ~ A helper for headers ~
    * A little function for constructing HTTP headers *)
@@ -41,24 +51,39 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
         "content-type", hdr_type;
         "connection", "close" ]
 
+  (* ~ Blog page ~ 
+   * Extracting the blog posts to serve them as an index *)
+  let blog_page store dir =
+    Store.list store [dir] >|= List.map fst >>= fun blogs -> 
+    let blogs = List.map (fun blog -> dir ^ "/" ^ (Filename.chop_extension blog)) blogs in 
+    let body = Pages.(to_html (blog_page blogs)) in 
+    let headers = get_headers "text/html" (String.length body) in 
+      S.respond_string ~headers ~body ~status:`OK ~flush:false () 
+
   (* ~ Blog Handler ~ 
    * A helper function for constructing blog posts and serving them up! *)
-  let blog_handler device blog_name =
-    let content = content_read device blog_name >|= Parser.YamlMarkdown.of_string in 
-    let response = content >>= (function 
-      | Ok blog -> 
-        let Html body = (Blog.wrap_blog blog).content in 
-        let headers = get_headers "text/html" (String.length body) in 
-          S.respond_string ~headers ~body ~status:`OK ~flush:false () 
-      | Error (`MalformedBlogPost e) -> S.respond_error ~body:(blog_name ^ " " ^ e) ()
-      | Error _ -> S.respond_not_found ~uri:(Uri.of_string blog_name) ()
-     ) in response
+  let blog_handler store blog_name cache = match Cache.find cache blog_name with 
+    | Some blog -> log_info "Found in the cache!";
+      let body = Blog.to_html blog in 
+      let headers = get_headers "text/html" (String.length body) in 
+        S.respond_string ~headers ~body ~status:`OK ~flush:false () 
+    | None -> 
+      let name_list = Fpath.(segs (of_string blog_name |> function Ok d -> d | Error _ -> err "Malformed %s" blog_name)) in
+      let content = content_read store name_list >|= Parser.YamlMarkdown.of_string in 
+      let response = content >>= (function 
+        | Ok blog -> 
+          Cache.put cache blog_name blog; 
+          let body = Blog.to_html blog in 
+          let headers = get_headers "text/html" (String.length body) in 
+            S.respond_string ~headers ~body ~status:`OK ~flush:false () 
+        | Error (`MalformedBlogPost e) -> S.respond_error ~body:(blog_name ^ " " ^ e) ()
+        | Error _ -> S.respond_not_found ~uri:(Uri.of_string blog_name) ()
+      ) in response
 
   (* ~ Static File Handler ~
    * Serves up files like index.html, main.css, javascript etc. *)
   let static_file_handler device filename = 
     let filename = if List.length filename == 1 then List.hd filename else "unknown" in 
-    let filename = if filename = "" || filename = "/" then "index.html" else filename in
     file_read device filename >>= function
       | body -> begin match Fpath.get_ext (Fpath.v filename) with
         | ".html" -> let headers = get_headers "text/html" (String.length body) in 
@@ -70,19 +95,25 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
         | _-> S.respond_not_found ~uri:(Uri.of_string filename) ()
       end
 
-  (* ~ Irmin magic ~
-   * We can, at runtime, use Irmin to update the KV store... coming soon...*)
+  let serve_a_page page = 
+    let body = (Pages.to_html page) in 
+      let headers = get_headers "text/html" (String.length body) in 
+      S.respond_string ~headers ~body ~status:`OK ~flush:false ()
 
   (* ~ The Router ~
    * Unsurprisingly handles sending data to clients. For blog posts 
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
-  let router fs cont uri = 
-    let body = "<h1>Hi</h1>" in 
-    let headers = get_headers "text/html" (String.length body) in match uri with 
-      (* | ["blog"] -> fun () -> Blog.blog_home  *)
-      | "blog" :: tl -> fun () -> blog_handler cont ("blogs/" ^ (String.concat "" (tl @ [".md"])))
+  let router fs gs cache uri = match uri with 
+      | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
+      | ["about"] -> fun () -> serve_a_page Pages.about
+      | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
       | "images" :: tl -> fun () -> static_file_handler fs tl
+      | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
+        let body = "Succesful sync" in 
+        let headers = get_headers "text/html" (String.length body) in 
+        S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+      | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index
       | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 
@@ -102,8 +133,10 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
   let start server fs resolver conduit () =
     let host = Key_gen.host () in 
     let domain = `Http , host in 
-    init_blog_store ~resolver ~conduit ~uri:"git://github.com/patricoferris/lawrence.git" >>= fun cont ->
-    let callback = create domain (router fs cont) in
+    init_blog_store ~resolver ~conduit ~uri:"git://github.com/patricoferris/lawrence.git" >>= fun gs ->  
+    sync gs.remote >>= fun _ -> 
+    let cache = Cache.create 10 in 
+    let callback = create domain (router fs gs cache) in
     let port = Key_gen.http_port () in 
     server (`TCP port) callback
 end 
