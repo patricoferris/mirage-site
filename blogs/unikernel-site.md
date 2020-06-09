@@ -22,3 +22,28 @@ It's often useful to first outline what are the requirements of our system, this
 - Markdown to HTML: as has become increasingly common in part to the [JAM stack](https://jamstack.org/) we want to remove all "techy" details from the actual content making it easier to write blogs and for others to contribute. 
 - Git-based: whilst not obviously necessary, being git-based makes updating the content very easy (i.e. we won't have to rebuild the unikernel every time the content changes).
 
+## The Server 
+
+If this is your first time with OCaml and MirageOS might I suggest <INSERTOTHERBLOGHERE>. 
+
+The unikernel signature that will form our server is the following: 
+
+```ocaml
+module Make 
+  (S: Cohttp_lwt.S.Server)
+  (FS: Mirage_kv.RO)
+  (R : Resolver_lwt.S)
+  (C : Conduit_mirage.S)
+  (Clock: Mirage_clock.PCLOCK) :
+sig 
+  type s = Conduit_mirage.server -> S.t -> unit Lwt.t
+  val start: s -> FS.t -> Resolver_lwt.t -> Conduit_mirage.t -> unit -> unit Lwt.t
+end 
+```
+
+This is a functor - we get a collection of modules as arguments and our job is to build a new module satisfying the structure described between `sig` and `end`. The `start` function will be called with the various implementations that we require of the modules. Each functor argument has a key purpose: 
+
+- `Cohttp_lwt.S.Server`: this is our server for responding to HTTP requests, using it we can write `S.respond_string ~headers ~body ~status:`OK ~flush:false ()` which will reply to some incoming request. 
+- `Mirage_kv.RO`: an abstract *read-only key-value* mirage store, we will this "File System" to respond with static files like the css files for instance.
+- 
+
