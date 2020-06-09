@@ -122,7 +122,7 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
   
   let create domain router =
     let hdr = match fst domain with `Http -> "HTTP" | `Https -> "HTTPS" in
-    let callback _conn req body =
+    let callback _conn req _body =
       let uri = Request.uri req |> Uri.path |> split_path in 
       router uri () in 
     let conn_closed (_,conn_id) =

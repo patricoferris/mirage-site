@@ -22,7 +22,7 @@ It's often useful to first outline what are the requirements of our system, this
 - Markdown to HTML: as has become increasingly common in part to the [JAM stack](https://jamstack.org/) we want to remove all "techy" details from the actual content making it easier to write blogs and for others to contribute. 
 - Git-based: whilst not obviously necessary, being git-based makes updating the content very easy (i.e. we won't have to rebuild the unikernel every time the content changes).
 
-## The Server 
+## The Unikernel
 
 If this is your first time with OCaml and MirageOS might I suggest <INSERTOTHERBLOGHERE>. 
 
@@ -47,7 +47,6 @@ This is a functor - we get a collection of modules as arguments and our job is t
 - `Mirage_kv.RO`: an abstract *read-only key-value* mirage store, we will this "File System" to respond with static files like the css files for instance.
 - `Resolver_lwt.S`: 
 
-
 ## Generating HTML with TyXML PPX 
 
 OCaml has the ability to extend its syntax using PPX-es, preprocessors that are applied to OCaml code before the compiler is called. Nathan Rebours has written a great introductory [article](https://tarides.com/blog/2019-05-09-an-introduction-to-ocaml-ppx-ecosystem) about them. 
@@ -62,7 +61,6 @@ List.map
 ```
 
 This short example comes directly from the [pages module](https://github.com/patricoferris/mirage-site/blob/master/src/pages.ml). We generate links to each of the blog posts being passed into the function (this is just the key from our Irmin store, more on that soon). 
-
 
 ## Irmin
 
@@ -87,4 +85,34 @@ let init_blog_store ~resolver ~conduit ~uri =
     {store = repo; remote = Store.remote ~resolver ~conduit uri}
 ```
 
-The `Store.t` is used for querying the contents of our in-memory datastore whilst the `Irmin.remote` is for syncing. 
+The `Store.t` is used for querying the contents of our in-memory datastore whilst the `Irmin.remote` is for syncing. Once we have the blog contents as markdown, it can be parsed to extract the metadata using a custom `Parser.YamlMarkdown` module which conveniently also produces an HTML document for the actual contents. 
+
+## Making a Server
+
+A server is useless without some kind of routing - it must take requests for certain URIs and respond to them with sensible content. For example, if the router sees `patricoferris.com/blogs/compiler` it should find the `compiler.md` file, convert it to HTML and send this string back to the requesting user. 
+
+To do this we use a callback and the `S.make` function from [this](https://github.com/mirage/ocaml-cohttp/blob/master/cohttp-lwt/src/s.ml) module. 
+
+```ocaml
+val make :
+  ?conn_closed:(conn -> unit) ->
+  callback:(conn -> Cohttp.Request.t -> Body.t ->
+    (Cohttp.Response.t * Body.t) Lwt.t) ->
+  unit ->
+  t
+```
+
+From the signuate our callback should (ignoring the `conn` parameter) take a request and a request body and return a pair of a response and a response body. This is wrapped up in an `'a Lwt.t` monad which just means that it is a concurrent action. Any of the `respond_` functions from the same server module can do this. 
+
+But first we must extract the path so we know which file to send as a response. To do this we take the `Cohttp.Request.t` and extract the important path information from it. 
+
+```ocaml
+(* Drops the domain name and splits along / *)
+let split_path path = 
+    let dom::p = String.split_on_char '/' path in p 
+
+(* The callback function to be passes to S.make *)
+let callback _conn req _body =
+  let uri = Request.uri req |> Uri.path |> split_path in 
+  router uri () in (*...*)
+```
