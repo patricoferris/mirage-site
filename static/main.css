@@ -25,8 +25,9 @@ img {
   width: 100%;
 }
 
-.nav {
+#nav {
   margin-bottom: 40px;
+  margin: 15px 12%;
 }
 
 /* Flex rules */

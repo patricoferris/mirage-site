@@ -30,9 +30,9 @@ let index = [%html {|
     <title>Patrick Ferris</title>
   </head>
   <body> 
-    <div class="container-three-by-one nav">
+    <div id="nav" class="container-three-by-one">
       <div class="one-one">@patricoferris</div>
-      <div class="one-span-two-three" style="width: 100%;">
+      <div class="one-three" style="width: 100%;">
         <div class="container-three-by-one">
           <div class="one-one"><a href="/">home</a></div>
           <div class="one-two"><a href="/about">about</a></div>
@@ -57,9 +57,9 @@ let index = [%html {|
 let page_template ~title ~content = 
   let content = Html.Unsafe.data content in
   let html = [%html {|
-  <div class="container-three-by-one nav">
+  <div id="nav" class="container-three-by-one">
     <div class="one-one">@patricoferris</div>
-    <div class="one-span-two-three" style="width: 100%;">
+    <div class="one-three" style="width: 100%;">
       <div class="container-three-by-one">
         <div class="one-one"><a href="/">home</a></div>
         <div class="one-two"><a href="/about">about</a></div>

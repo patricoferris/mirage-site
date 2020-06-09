@@ -45,5 +45,21 @@ This is a functor - we get a collection of modules as arguments and our job is t
 
 - `Cohttp_lwt.S.Server`: this is our server for responding to HTTP requests, using it we can write ``S.respond_string ~headers ~body ~status:`OK ~flush:false ()`` which will reply to some incoming request. 
 - `Mirage_kv.RO`: an abstract *read-only key-value* mirage store, we will this "File System" to respond with static files like the css files for instance.
-- 
+- `Resolver_lwt.S`: 
+
+
+## Generating HTML with TyXML PPX 
+
+OCaml has the ability to extend its syntax using PPX-es, preprocessors that are applied to OCaml code before the compiler is called. Nathan Rebours has written a great introductory [article](https://tarides.com/blog/2019-05-09-an-introduction-to-ocaml-ppx-ecosystem) about them. 
+
+Ocsigen have create a library, [TyXML](https://ocsigen.org/tyxml/4.4.0/manual/intro), which provides a way of generating statically correct HTML. They've also made a handy PPX that allows us to write HTML more naturally and still get compile time error checking. 
+
+```ocaml
+List.map 
+  (fun link -> 
+    [%html "<div><a href="link">"[Html.txt link]"</a></div>"]) 
+  blogs
+```
+
+This short example comes directly from the [pages module](https://github.com/patricoferris/mirage-site/blob/master/src/pages.ml). We generate links to each of the blog posts being passed into the function (this is just the key from our Irmin store, more on that soon). 
 
