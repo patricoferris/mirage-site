@@ -9,6 +9,10 @@ let https_port =
   let doc = Key.Arg.info ~doc:"Port number for HTTPS" ~docv:"PORT" ["https-port"] in
     Key.(create "https-port" Arg.(opt ~stage:`Both int 443 doc))
 
+let git_remote = 
+  let doc = Key.Arg.info ~doc:"Git remote URI" ["git-remote"] in 
+    Key.(create "git-remote" Arg.(opt ~stage:`Both string "git://github.com/patricoferris/mirage-site.git" doc))
+
 let fs_key = 
   Key.(value @@ kv_ro ())
 
@@ -19,7 +23,7 @@ let host_key =
   in
   Key.(create "host" Arg.(opt string "localhost" doc))
 
-let keys = Key.([ abstract host_key; abstract http_port; abstract https_port])
+let keys = Key.([ abstract host_key; abstract http_port; abstract https_port; abstract git_remote])
 let packages = [ 
   package "tyxml-ppx";
   package "tyxml";

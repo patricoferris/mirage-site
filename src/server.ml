@@ -110,6 +110,7 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
       | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
       | "images" :: tl -> fun () -> static_file_handler fs tl
       | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
+        Cache.flush cache;
         let body = "Succesful sync" in 
         let headers = get_headers "text/html" (String.length body) in 
         S.respond_string ~headers ~body ~status:`OK ~flush:false ()
@@ -132,8 +133,9 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
   
   let start server fs resolver conduit () =
     let host = Key_gen.host () in 
+    let remote = Key_gen.git_remote () in 
     let domain = `Http , host in 
-    init_blog_store ~resolver ~conduit ~uri:"git://github.com/patricoferris/lawrence.git" >>= fun gs ->  
+    init_blog_store ~resolver ~conduit ~uri:remote >>= fun gs ->  
     sync gs.remote >>= fun _ -> 
     let cache = Cache.create 10 in 
     let callback = create domain (router fs gs cache) in
