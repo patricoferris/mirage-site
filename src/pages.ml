@@ -32,7 +32,7 @@ let index = [%html {|
   <body> 
     <div id="nav" class="container-three-by-one">
       <div class="one-one">@patricoferris</div>
-      <div class="one-three" style="width: 100%;">
+      <div class="nav-buttons" style="width: 100%;">
         <div class="container-three-by-one">
           <div class="one-one"><a href="/">home</a></div>
           <div class="one-two"><a href="/about">about</a></div>
@@ -59,7 +59,7 @@ let page_template ~title ~content =
   let html = [%html {|
   <div id="nav" class="container-three-by-one">
     <div class="one-one">@patricoferris</div>
-    <div class="one-three" style="width: 100%;">
+    <div class="nav-buttons" style="width: 100%;">
       <div class="container-three-by-one">
         <div class="one-one"><a href="/">home</a></div>
         <div class="one-two"><a href="/about">about</a></div>
@@ -80,7 +80,7 @@ let about =
   let content = [%html {|
     <div class="container-three-by-one nav">
       <div class="one-one">@patricoferris</div>
-      <div class="one-span-two-three" style="width: 100%;">
+      <div class="nav-buttons" style="width: 100%;">
         <div class="container-three-by-one">
           <div class="one-one"><a href="/">home</a></div>
           <div class="one-two"><a href="/about">about</a></div>
