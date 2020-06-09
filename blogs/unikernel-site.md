@@ -43,7 +43,7 @@ end
 
 This is a functor - we get a collection of modules as arguments and our job is to build a new module satisfying the structure described between `sig` and `end`. The `start` function will be called with the various implementations that we require of the modules. Each functor argument has a key purpose: 
 
-- `Cohttp_lwt.S.Server`: this is our server for responding to HTTP requests, using it we can write `S.respond_string ~headers ~body ~status:`OK ~flush:false ()` which will reply to some incoming request. 
+- `Cohttp_lwt.S.Server`: this is our server for responding to HTTP requests, using it we can write ``S.respond_string ~headers ~body ~status:`OK ~flush:false ()`` which will reply to some incoming request. 
 - `Mirage_kv.RO`: an abstract *read-only key-value* mirage store, we will this "File System" to respond with static files like the css files for instance.
 - 
 
