@@ -149,4 +149,6 @@ For an actual blog, we hand over control to a `blog_handler` function. The basic
 
 1. Check if the blog is in the cache, in which case serve the already generated HTML content. 
 2. If it isn't in the cache, query the Irmin store for the markdown content. 
-3. Pass this content along to `Parser.YamlMarkdown.of_string`
+3. Pass this content along to `Parser.YamlMarkdown.of_string` to generate the blog, cache it and serve the content. 
+4. Handle any errors gracefully. 
+
