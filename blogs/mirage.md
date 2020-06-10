@@ -27,7 +27,61 @@ What follows are some of the key concepts which make up MirageOS.
 
 ### Modules and Functors
 
-Functional programming in OCaml is largely managed by a powerful module system. 
+Functional programming in OCaml is largely managed by a powerful module system. All code in OCaml is wrapped up inside of a module. When you write a `hello.ml` file you have implicityly created a `Hello` module. 
+
+Signatures or interfaces for modules are like structural contracts to the bare minimum an implementation should provide. For example: 
+
+```ocaml
+module Bool : sig
+  type t 
+  val tru : t 
+  val fls : t
+  val ifthenelse : t -> 'a -> 'a -> 'a
+end = struct 
+  type t = True | False 
+  let tru = True
+  let fls = False
+  let ifthenelse b e1 e2 = match b with 
+    | True  -> e1
+    | False -> e2
+end;;
+
+Bool.(ifthenelse fls 1 0) (* Returns 0 *)
+```
+The user can't interact with the implementation, the type `t` for `Bool` remains abstract. This is generally desirable as it minimises the chances of other developers misusing or breaking implementations. 
+
+The true power of the module system comes from its composability. Functors are what functions are to terms for modules. Let's say we wanted to make a list that was always sorted. Provided the elements of the list were comparable in some way, we can do this. 
+
+```ocaml 
+module type Printable = sig 
+  type t 
+  val print : t -> unit
+end 
+
+module Animals = struct 
+  type t = Camel | Other 
+  let print = function 
+    | Camel -> print_string "🐫🐫🐫" 
+    | Other -> print_string "not a camel" 
+end 
+
+module Make (P : Printable) : sig
+  include Printable
+  val print_list : P.t list -> unit 
+end = struct 
+  type t = P.t 
+  let print t = P.print t 
+  let print_list lst = List.iter P.print lst 
+end 
+
+module AnimalList = Make(Animals)
+```
+
+We know have a list printing function for elements of type `Animal.t`. 
+
+```ocaml
+AnimalList.print_list (Animals.([Camel, Other]))
+```
 
 ### Keys 
 
