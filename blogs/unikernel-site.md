@@ -1,10 +1,11 @@
 ---
 authors: 
   - Patrick Ferris 
-title: A Git-backed, MirageOS Blog
+title: A Unikernel Blog
 updated: 2020-06-09
 tags:
   - mirage
+  - irmin
   - unikernel
 ---
 
@@ -87,6 +88,8 @@ let init_blog_store ~resolver ~conduit ~uri =
 
 The `Store.t` is used for querying the contents of our in-memory datastore whilst the `Irmin.remote` is for syncing. Once we have the blog contents as markdown, it can be parsed to extract the metadata using a custom `Parser.YamlMarkdown` module which conveniently also produces an HTML document for the actual contents. 
 
+To see how we can synchronise the content, have a look at the **router** section.
+
 ## Making a Server
 
 A server is useless without some kind of routing - it must take requests for certain URIs and respond to them with sensible content. For example, if the router sees `patricoferris.com/blogs/compiler` it should find the `compiler.md` file, convert it to HTML and send this string back to the requesting user. 
@@ -116,3 +119,34 @@ let callback _conn req _body =
   let uri = Request.uri req |> Uri.path |> split_path in 
   router uri () in (*...*)
 ```
+
+## The Router 
+
+When building our callback function for our server, we passed the extracted URI to a `router` function. Let's now take a look at what it does. 
+
+```ocaml
+let router fs gs cache uri = match uri with 
+  | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
+  | ["about"] -> fun () -> serve_a_page Pages.about
+  | "blogs" :: tl -> 
+    fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
+  | "images" :: tl -> 
+    fun () -> static_file_handler fs tl
+  | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
+    Cache.flush cache;
+    let body = "Succesful sync" in 
+    let headers = get_headers "text/html" (String.length body) in 
+    S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+  | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index
+  | _ -> fun () -> static_file_handler fs uri
+```
+
+There's a lot going on here, let's take it piece by piece. The router takes four parameters: the filesystem (`fs`), the git store (`gs`), the `cache` and the `uri` to pattern-match on. The URI comes in as a list of the segments that make it up. For example, `blogs/unikernel` becomes `["blogs"; "unikernel"]`. 
+
+If it only contains `blogs` then we serve the blogs index page. Most of the functions are defined in the [server](https://github.com/patricoferris/mirage-site/blob/master/src/server.ml) file. To do this we query the Irmin git store for a list of the nodes and produce HTML links to the appropriate pages. 
+
+For an actual blog, we hand over control to a `blog_handler` function. The basic outline of this function is the following: 
+
+1. Check if the blog is in the cache, in which case serve the already generated HTML content. 
+2. If it isn't in the cache, query the Irmin store for the markdown content. 
+3. Pass this content along to `Parser.YamlMarkdown.of_string`
