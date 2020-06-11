@@ -9,6 +9,8 @@ tags:
   - unikernel
 ---
 
+![Convention OS Stack and Mirage Stack](/blogs/images/stack.svg)
+
 MirageOS is a library operating system (OS) for building unikernels. Conventionally OSes are large programs that sit between hardware and applications providing an interface between them. In their quest to be useful in as many places as possible, they tend to grow very large and can seem cumbersome when you only want very specific parts of the OS. 
 
 MirageOS brings the modularity of the "library" design principle to the OS world. Only include the parts you need, no more no less. This produces very lightweight unikernels with a very specific use-case (in this example a web server for a blog). 
@@ -25,7 +27,7 @@ It's often useful to first outline what are the requirements of our system, this
 
 ## The Unikernel
 
-If this is your first time with OCaml and MirageOS might I suggest <INSERTOTHERBLOGHERE>. 
+If this is your first time with OCaml and MirageOS might I suggest waiting for a blog post about [mirage](/drafts/mirage) (this a WIP). Alternatively you can use the [mirage.io](https://mirage.io/) website to learn more. 
 
 The unikernel signature that will form our server is the following: 
 
@@ -34,19 +36,18 @@ module Make
   (S: Cohttp_lwt.S.Server)
   (FS: Mirage_kv.RO)
   (R : Resolver_lwt.S)
-  (C : Conduit_mirage.S)
-  (Clock: Mirage_clock.PCLOCK) :
+  (C : Conduit_mirage.S) :
 sig 
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
-  val start: s -> FS.t -> Resolver_lwt.t -> Conduit_mirage.t -> unit -> unit Lwt.t
+  val start: s -> FS.t -> Resolver_lwt.t -> Conduit_mirage.t -> unit Lwt.t
 end 
 ```
 
 This is a functor - we get a collection of modules as arguments and our job is to build a new module satisfying the structure described between `sig` and `end`. The `start` function will be called with the various implementations that we require of the modules. Each functor argument has a key purpose: 
 
 - `Cohttp_lwt.S.Server`: this is our server for responding to HTTP requests, using it we can write ``S.respond_string ~headers ~body ~status:`OK ~flush:false ()`` which will reply to some incoming request. 
-- `Mirage_kv.RO`: an abstract *read-only key-value* mirage store, we will this "File System" to respond with static files like the css files for instance.
-- `Resolver_lwt.S`: 
+- `Mirage_kv.RO`: an abstract *read-only, key-value* mirage store used to respond with static files like the css files for instance.
+- `Resolver_lwt.S` and `Conduit_mirage.S`: the unikernel has no way to communicate with the outside world! In particular, for Irmin to be able to pull in content from our remote git repository it needs a resolver and a conduit.   
 
 ## Generating HTML with TyXML PPX 
 
@@ -65,9 +66,9 @@ This short example comes directly from the [pages module](https://github.com/pat
 
 ## Irmin
 
-Irmin is powerful library for creating and interacting with Git-like datastores. For this blog, it creates an in-memory key-value store using the Mirage backend for Irmin. 
+Irmin is powerful library for creating and interacting with Git-like datastores. For this blog it creates an in-memory, key-value store using the Mirage backend for Irmin. 
 
-With an in-memory Gite store we can actually - at runtime - sync our content just like syncing a git repository with `git pull`! This means we can update our content, push to wherever we are holding it and synchronise our unikernel all without having to rebuild it.
+With an in-memory Git store we can actually - at runtime - sync our content just like syncing a git repository with `git pull`! This means we can update our content, push to wherever we are holding it and synchronise our unikernel all without having to rebuild it.
 
 To do this, the unikernel accepts a `git-remote` key. It then initialises the Irmin store and exposes an endpoint which can be used to synchronise the content of the blog. 
 
