@@ -83,21 +83,7 @@ We know have a list printing function for elements of type `Animal.t`.
 AnimalList.print_list (Animals.([Camel, Other]))
 ```
 
-### Keys 
-
-These are **configuration keys** - typically when we are building programs we pass additional information into the program to be used at runtime. Think `gcc -o test.out test.c`. But for a Unikernel there is no notion of a command-line, instead we use keys. To construct a key we can use the `create` function. 
-
-```ocaml
-val create: string -> 'a Arg.t -> 'a key
-```
-
-The `string` is the name of the command-line argument and the argument can be passed in using `Arg.(opt <stage> <type> <default> <documentation>)`. Something that has been added here is the port number for the connection. The `<stage>` argument specifies whether argument is taken at configuration, runtime or both. 
-
-```ocaml
-let http_port = 
-  let doc = Key.Arg.info ~doc:"Port number for HTTP" ["port"] in
-    Key.(create "port" Arg.(opt ~stage:`Both int 8080 doc))
-```
+What this tries to show through a very contrived example is that functors enable abstraction. We could build a list printing function from the abstract notion of something that could print elements. In MirageOS this is slightly more complicated, but the principle is similar. Allow the user to work with abstract notions of common OS building-blocks and fill in the implementation details later dependent on the backend being targeted. 
 
 ## Functoria
 
@@ -105,29 +91,36 @@ Managing functors and modules in such a complex way is tricky. The solution was 
 
 ### `@->` 
 
-This symbol `@->` is defined in the `functoria.ml` [file](https://github.com/mirage/mirage/blob/master/functoria/lib/functoria.ml) - a domain-specific language (DSL) for working with functors. Functors, from what I understand, are like functions - only from module to module (or category to category?). Here are some of the important type signatures that help illuminate what is going on here. 
+This symbol `@->` is defined in the `functoria.ml` [file](https://github.com/mirage/mirage/blob/master/functoria/lib/functoria.ml). Here are some of the important type signatures that help illuminate what is going on here. 
 
 ```ocaml
-(* The typ type definition *)
-type _ typ = Type: 'a -> 'a typ | Function: ('b typ * 'c typ) -> ('b * 'c) typ 
+(* typ types represent module signatures *)
+type _ t =
+  | Type : 'a -> 'a t (* module type *)
+  | Function : 'a t * 'b t -> ('a -> 'b) t
 
-(* Just syntactic sugar... a @-> b @-> c = Function (a, Function (b, c)) *)
-let (@->) f t = Function (f, t)
-
-(* Foreign function takes the packages and keys as described above *)
-(* The interesting part is the last argument of type `a typ *)
-val foreign:
-  ?packages:package list ->
-  ?keys:key list ->
-  ?deps:abstract_impl list ->
-  string -> 'a typ -> 'a impl
-
-(* Here we describe the function "Server.Run" which takes a http module and gives a job module*)
-let main () = 
-  foreign 
-    ~keys
-    "Server.Run" (http @-> job)
+(* Just syntactic sugar: a @-> b @-> c = Function (a, Function (b, c)) *)
+let ( @-> ) f x = Function (f, x)
 ```
+
+Functoria represents modules and functors using types. A value of type `('a -> 'b) typ` is a functor from a module signature described by `'a` to one described by `b`. Unikernels, in the Mirage sense, are just functors. 
+
+If we look at the ["Hello World"](https://github.com/mirage/mirage-skeleton/blob/master/tutorial/hello/config.ml) Mirage example, we can see `(time @-> job)` is given to the `foreign` function. This describes the unikernel. The unikernel needs some notion of time (in this example to be able to sleep), so the unikernel signature is a functor with a time argument. We get the value `time` from the [mirage types](https://github.com/mirage/mirage/blob/master/lib/mirage/mirage_impl_time.mli) definition. 
+
+The `foreign` function is just an alias for the `DSL.main` function which has the following type: 
+
+```ocaml
+val main :
+  ?packages:package list ->
+  ?packages_v:package list Key.value ->
+  ?keys:abstract_key list ->
+  ?extra_deps:Impl.abstract list ->
+  string ->
+  'a typ ->
+  'a impl
+```
+
+The optional arguments are fairly straightforward, the `packages` are the dependencies which are installed before compilation. The `string` argument is the name of the unikernel and the `'a typ` is the module signture type. From this we can see the job is to produce a module implementation type from the signature.
 
 ### `$`
 
@@ -144,4 +137,21 @@ let ($) f x = App { f; x }
 let () =
   register "run" [(http $ cohttp_server (conduit_direct stack)) $ filesfs]
 
+```
+
+
+### Keys 
+
+These are **configuration keys** - typically when we are building programs we pass additional information into the program to be used at runtime. Think `gcc -o test.out test.c`. But for a Unikernel there is no notion of a command-line, instead we use keys. To construct a key we can use the `create` function. 
+
+```ocaml
+val create: string -> 'a Arg.t -> 'a key
+```
+
+The `string` is the name of the command-line argument and the argument can be passed in using `Arg.(opt <stage> <type> <default> <documentation>)`. Something that has been added here is the port number for the connection. The `<stage>` argument specifies whether argument is taken at configuration, runtime or both. 
+
+```ocaml
+let http_port = 
+  let doc = Key.Arg.info ~doc:"Port number for HTTP" ["port"] in
+    Key.(create "port" Arg.(opt ~stage:`Both int 8080 doc))
 ```
