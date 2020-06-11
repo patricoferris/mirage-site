@@ -31,13 +31,13 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
       {store = repo; remote = Store.remote ~resolver ~conduit uri}
 
   (* ~ Irmin magic ~
-   * We can, at runtime, use Irmin to update the KV store...*)
+   * We can, at runtime, use Irmin to update the contents! *)
    let sync remote =
     let in_mem_config = Irmin_mem.config () in   
       Store.Repo.v in_mem_config >>= Store.master >>= fun t ->
       Sync.pull_exn t remote `Set
 
-  (* To stay... Miragey the content has the same interface, a Mirage KV RO store... but we fill it from Irmin *)
+ (* Quering the Irmin store for the blog content *)
   let content_read store name = 
     Store.find store name >|= function
       | Some data -> data
@@ -108,6 +108,7 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
       | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
       | ["about"] -> fun () -> serve_a_page Pages.about
       | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
+      | "drafts" :: tl -> fun () -> blog_handler gs.store ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
       | "images" :: tl -> fun () -> static_file_handler fs tl
       | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
         Cache.flush cache;

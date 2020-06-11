@@ -27,7 +27,7 @@ What follows are some of the key concepts which make up MirageOS.
 
 ### Modules and Functors
 
-Functional programming in OCaml is largely managed by a powerful module system. All code in OCaml is wrapped up inside of a module. When you write a `hello.ml` file you have implicityly created a `Hello` module. 
+Functional programming in OCaml is largely managed by a powerful module system. All code in OCaml is wrapped up inside of a module. When you write a `hello.ml` file you have implicitly created a `Hello` module. 
 
 Signatures or interfaces for modules are like structural contracts to the bare minimum an implementation should provide. For example: 
 
@@ -50,7 +50,7 @@ Bool.(ifthenelse fls 1 0) (* Returns 0 *)
 ```
 The user can't interact with the implementation, the type `t` for `Bool` remains abstract. This is generally desirable as it minimises the chances of other developers misusing or breaking implementations. 
 
-The true power of the module system comes from its composability. Functors are what functions are to terms for modules. Let's say we wanted to make a list that was always sorted. Provided the elements of the list were comparable in some way, we can do this. 
+The true power of the module system comes from its composability. Functors are like functions over modules. In the following example we describe modules which are printable i.e. have a type `t` and can print that type. `Animals` is an implementation of printable. `Make` is a functor which takes a `Printable` and extends its functionality to print lists.  
 
 ```ocaml 
 module type Printable = sig 
@@ -83,18 +83,18 @@ We know have a list printing function for elements of type `Animal.t`.
 AnimalList.print_list (Animals.([Camel, Other]))
 ```
 
-What this tries to show through a very contrived example is that functors enable abstraction. We could build a list printing function from the abstract notion of something that could print elements. In MirageOS this is slightly more complicated, but the principle is similar. Allow the user to work with abstract notions of common OS building-blocks and fill in the implementation details later dependent on the backend being targeted. 
+What this tries to show through a very contrived example is that functors enable abstraction. We could build a list printing function from the abstract notion of something that could print elements. In MirageOS this is slightly more complicated, but the principle is similar. Allow the user to work with abstract notions of common OS building-blocks and fill in the implementation details later, dependent on the backend being targeted. 
 
 ## Functoria
 
 Managing functors and modules in such a complex way is tricky. The solution was to build a domain-specific language (DSL) to help manage the complexity whilst being readable and usable. This is Functoria.
 
-### `@->` 
+### Abstracting Module Signatures 
 
-This symbol `@->` is defined in the `functoria.ml` [file](https://github.com/mirage/mirage/blob/master/functoria/lib/functoria.ml). Here are some of the important type signatures that help illuminate what is going on here. 
+The operator `@->` is defined in the `type.ml` [file](https://github.com/mirage/mirage/blob/master/lib/functoria/type.ml). Here are some of the important type signatures that help illuminate what is going on here. 
 
 ```ocaml
-(* typ types represent module signatures *)
+(* t types represent module signatures *)
 type _ t =
   | Type : 'a -> 'a t (* module type *)
   | Function : 'a t * 'b t -> ('a -> 'b) t
@@ -103,11 +103,11 @@ type _ t =
 let ( @-> ) f x = Function (f, x)
 ```
 
-Functoria represents modules and functors using types. A value of type `('a -> 'b) typ` is a functor from a module signature described by `'a` to one described by `b`. Unikernels, in the Mirage sense, are just functors. 
+Functoria represents modules and functors using types. A value of type `('a -> 'b) t` is a functor from a module signature described by `'a` to one described by `b`. Unikernels, in the Mirage sense, are just functors. 
 
 If we look at the ["Hello World"](https://github.com/mirage/mirage-skeleton/blob/master/tutorial/hello/config.ml) Mirage example, we can see `(time @-> job)` is given to the `foreign` function. This describes the unikernel. The unikernel needs some notion of time (in this example to be able to sleep), so the unikernel signature is a functor with a time argument. We get the value `time` from the [mirage types](https://github.com/mirage/mirage/blob/master/lib/mirage/mirage_impl_time.mli) definition. 
 
-The `foreign` function is just an alias for the `DSL.main` function which has the following type: 
+The `foreign` function is an alias for the `DSL.main` function which has the following type: 
 
 ```ocaml
 val main :
@@ -122,7 +122,7 @@ val main :
 
 The optional arguments are fairly straightforward, the `packages` are the dependencies which are installed before compilation. The `string` argument is the name of the unikernel and the `'a typ` is the module signture type. From this we can see the job is to produce a module implementation type from the signature.
 
-### `$`
+A value of type `'a impl` represents a module implementation of type `'a`. 
 
 The `$` operator is again just more syntactic sugar - it applies functors and modules. So in the code below `http $ cohttp_server (conduit_direct stack)` is applying the `http` functor to the module you get by taking the `cohttp_server` function and applying the `(conduit_direct stack)` conduit implementation. 
 
@@ -136,22 +136,16 @@ let ($) f x = App { f; x }
 
 let () =
   register "run" [(http $ cohttp_server (conduit_direct stack)) $ filesfs]
-
 ```
 
+## Building a Unikernel 
 
-### Keys 
+As of Mirage 3.7.7, the following is a typical way to configure, install dependencies and build unikernels. In the soon to arrive [Mirage 4](https://github.com/mirage/mirage/pull/1153) a lot of this will be built using `dune`. 
 
-These are **configuration keys** - typically when we are building programs we pass additional information into the program to be used at runtime. Think `gcc -o test.out test.c`. But for a Unikernel there is no notion of a command-line, instead we use keys. To construct a key we can use the `create` function. 
-
-```ocaml
-val create: string -> 'a Arg.t -> 'a key
+```
+mirage configure -t <backend>
+make depend
+mirage build 
 ```
 
-The `string` is the name of the command-line argument and the argument can be passed in using `Arg.(opt <stage> <type> <default> <documentation>)`. Something that has been added here is the port number for the connection. The `<stage>` argument specifies whether argument is taken at configuration, runtime or both. 
-
-```ocaml
-let http_port = 
-  let doc = Key.Arg.info ~doc:"Port number for HTTP" ["port"] in
-    Key.(create "port" Arg.(opt ~stage:`Both int 8080 doc))
-```
+We'll use the "hello" example previously described to see what happens as we compile our unikernel. The first step is to configure it. 
