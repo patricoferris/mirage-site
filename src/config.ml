@@ -48,8 +48,7 @@ let http =
   foreign
     ~keys
     ~packages
-    "Server.Make" (http @-> kv_ro @-> Mirage.resolver @-> Mirage.conduit @-> pclock @-> job)
+    "Server.Make" (http @-> kv_ro @-> Mirage.resolver @-> Mirage.conduit @-> job)
 
 let () =
-  let conduit = cohttp_server @@ conduit_direct stack in  
-  register "run" [http $ conduit $ filesfs $ resolver $ cond $ default_posix_clock]
+  register "run" [http $ (cohttp_server @@ conduit_direct stack) $ filesfs $ resolver $ cond]

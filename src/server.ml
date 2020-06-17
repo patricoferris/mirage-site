@@ -3,7 +3,12 @@ open Cohttp
 let err fmt = Fmt.kstrf failwith fmt
 let concat ss = String.concat "/" ss
 
-module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C : Conduit_mirage.S) (Clock: Mirage_clock.PCLOCK) = struct
+module Make 
+  (S: Cohttp_lwt.S.Server) 
+  (FS: Mirage_kv.RO) 
+  (R : Resolver_lwt.S) 
+  (C : Conduit_mirage.S) = struct
+
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
 
   let log_src = Logs.Src.create "server" ~doc:"server"  
@@ -60,6 +65,18 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
     let headers = get_headers "text/html" (String.length body) in 
       S.respond_string ~headers ~body ~status:`OK ~flush:false () 
 
+  (* ~ Image handling ~ *)
+  let image_handler store image = 
+    let image = concat image in 
+    let name_list = Fpath.(segs (of_string image |> function Ok d -> d | Error _ -> err "Malformed %s" image)) in
+    content_read store name_list >>= fun body -> 
+      match Fpath.get_ext (Fpath.v image) with
+        | ".jpg" -> let headers = get_headers "image/jpg" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | ".svg" -> let headers = get_headers "image/svg+xml" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | _ -> S.respond_not_found ~uri:(Uri.of_string image) ()
+        
   (* ~ Blog Handler ~ 
    * A helper function for constructing blog posts and serving them up! *)
   let blog_handler store blog_name cache = match Cache.find cache blog_name with 
@@ -92,7 +109,9 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
         | ".jpg" -> let headers = get_headers "image/jpg" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
-        | _-> S.respond_not_found ~uri:(Uri.of_string filename) ()
+        | ".svg" -> let headers = get_headers "image/svg+xml" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | _ -> S.respond_not_found ~uri:(Uri.of_string filename) ()
       end
 
   let serve_a_page page = 
@@ -107,9 +126,9 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
   let router fs gs cache uri = match uri with 
       | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
       | ["about"] -> fun () -> serve_a_page Pages.about
+      | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img
       | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
       | "drafts" :: tl -> fun () -> blog_handler gs.store ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
-      | "images" :: tl -> fun () -> static_file_handler fs tl
       | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
         Cache.flush cache;
         let body = "Succesful sync" in 
@@ -132,7 +151,7 @@ module Make (S: Cohttp_lwt.S.Server) (FS: Mirage_kv.RO) (R : Resolver_lwt.S) (C 
     in
     S.make ~callback ~conn_closed ()
   
-  let start server fs resolver conduit () =
+  let start server fs resolver conduit =
     let host = Key_gen.host () in 
     let remote = Key_gen.git_remote () in 
     let domain = `Http , host in 

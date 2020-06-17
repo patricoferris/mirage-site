@@ -6,9 +6,8 @@ module Make
   (S: Cohttp_lwt.S.Server)
   (FS: Mirage_kv.RO)
   (R : Resolver_lwt.S)
-  (C : Conduit_mirage.S)
-  (Clock: Mirage_clock.PCLOCK) :
+  (C : Conduit_mirage.S) :
 sig 
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
-  val start: s -> FS.t -> Resolver_lwt.t -> Conduit_mirage.t -> unit -> unit Lwt.t
+  val start: s -> FS.t -> Resolver_lwt.t -> Conduit_mirage.t -> unit Lwt.t
 end 
