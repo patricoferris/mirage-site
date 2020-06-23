@@ -1,5 +1,4 @@
 open Blog
-open Html
 
 (* ~ A Parser ~ *
  * Containing modules for parsing different documents and producing
@@ -8,7 +7,6 @@ open Html
 (* ~ Yaml Frontmatter ~ 
 * A parser for doing yaml front matter in the markdown *)
 module YamlMarkdown = struct 
-  type t = Html.t
   type error = [`MalformedBlogPost of string]
 
   let empty_post : Blog.t = {
