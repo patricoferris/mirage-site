@@ -51,4 +51,4 @@ let http =
     "Server.Make" (http @-> kv_ro @-> kv_ro @-> Mirage.resolver @-> Mirage.conduit @-> pclock @-> job)
 
 let () =
-  register "run" [http $ (cohttp_server @@ conduit_direct stack) $ secrets $ filesfs $ resolver $ cond $ default_posix_clock]
+  register "run" [http $ (cohttp_server @@ conduit_direct ~tls:true stack) $ secrets $ filesfs $ resolver $ cond $ default_posix_clock]
