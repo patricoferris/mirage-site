@@ -5,9 +5,11 @@ let concat ss = String.concat "/" ss
 
 module Make 
   (S: Cohttp_lwt.S.Server) 
+  (SEC : Mirage_kv.RO)
   (FS: Mirage_kv.RO) 
   (R : Resolver_lwt.S) 
-  (C : Conduit_mirage.S) = struct
+  (C : Conduit_mirage.S)
+  (Clock : Mirage_clock.PCLOCK) = struct
 
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
 
@@ -150,15 +152,29 @@ module Make
       Log.debug (fun f -> f "[%s %s] OK, closing" hdr cid)
     in
     S.make ~callback ~conn_closed ()
-  
-  let start server fs resolver conduit =
-    let host = Key_gen.host () in 
-    let remote = Key_gen.git_remote () in 
-    let domain = `Http , host in 
+
+
+  (* ~ TLS for Secure HTTP ~
+   * X509 is the standard used for public key certificates.
+   * https://github.com/mirage/mirage-skeleton/blob/master/applications/static_website_tls/dispatch.ml *)
+   module X509 = Tls_mirage.X509(SEC)(Clock)
+
+  let tls_init secrets = 
+    X509.certificate secrets `Default >>= fun cert -> 
+    let configuration = Tls.Config.server ~certificates:(`Single cert) () in 
+    Lwt.return configuration
+
+
+  let start server secrets fs resolver conduit _clock =
+    tls_init secrets >>= fun cfg -> (* Create the TLS config *)
+    let host = Key_gen.host () in (* Get host name *)
+    let port = Key_gen.https_port () in (* Get port for https *)
+    let tls = `TLS (cfg, `TCP port) in (* Create a tls value using the port and configuration over TCP *)
+    let remote = Key_gen.git_remote () in (* Git remote for blog content *)
+    let domain = `Https , host in (* Domain for router *)
     init_blog_store ~resolver ~conduit ~uri:remote >>= fun gs ->  
-    sync gs.remote >>= fun _ -> 
-    let cache = Cache.create 10 in 
+    sync gs.remote >>= fun _ -> (* Syncing blog content initially *)
+    let cache = Cache.create 10 in (* Creating the cache *)
     let callback = create domain (router fs gs cache) in
-    let port = Key_gen.http_port () in 
-    server (`TCP port) callback
+      server tls callback
 end 

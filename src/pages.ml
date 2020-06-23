@@ -1,24 +1,5 @@
 open Tyxml
 
-let wrapper ~title ~content = [%html{|
-  <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta http-equiv="X-UA-Compatible" content="ie=edge">
-      <title>|} (Html.txt title) {|</title>
-      <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&family=Ubuntu:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-      <link rel=stylesheet href="/main.css" />
-      <link rel="stylesheet"  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/styles/gruvbox-dark.min.css">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
-      <script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/languages/ocaml.min.js"></script>
-      <script>hljs.initHighlightingOnLoad();</script>
-    </head>
-    <body>|} content {|
-    </body>
-  </html>
-|}]
-
 let index = [%html {|
   <html lang="en">
   <head>
@@ -69,14 +50,24 @@ let page_template ~title ~content =
   </div>
   <div class="content">
   <h1>|} [Html.txt title] {|</h1>|}[content]{|</div>
-|}] in wrapper ~title ~content:html
+|}] in Components.header_wrapper ~title ~content:html
 
 let blog_page blogs = 
   let content = List.map (fun link -> [%html "<div><a href="link">"[Html.txt link]"</a></div>"]) blogs in
   let content = [%html "<div class=content><h1>Blog Posts</h1><div class=flex>"content"</div></div>"] in
-  wrapper ~title:"Blog Posts" ~content:[content]
+  Components.header_wrapper ~title:"Blog Posts" ~content:[content]
 
 let about = 
+  let passions = [
+    {|Open Source Projects: whether its hardware or software I think open source projects are great. 
+      They provide a great opportunity for more people to get involved with technology and for more non-profit 
+      oriented projects to get off the ground |};
+    {|OCaml and MirageOS: when I first learnt about functional programming I didn't get it, now it's hard not to use it. 
+      MirageOS is a library operating system for building unikernels - they are small, low-power, secure OSes.|};
+    {|RISC-V: the open source specification for a RISC ISA which enables anybody to build their own processors and extend them
+      in whatever way suits them - there is a big opportunity here for developing highly specialised, secure, low-power processors.|};
+    {|Environmentalism: it's probably somewhat obvious from the number of times I said "low-power" but the tech industry has a duty to 
+      (a) lower its carbon footprint and (b) providing tooling for tackling climate change.|}] in 
   let content = [%html {|
     <div class="container-three-by-one nav">
       <div class="one-one">@patricoferris</div>
@@ -91,18 +82,8 @@ let about =
     <div class="content">
     <p>I'm a recent graduate from Pembroke College, Cambridge in Computer Science.</p>
     <p>Some of my passions include:</p>
-    <ul>
-      <li>Open Source Projects: whether its hardware or software I think open source projects are great. 
-      They provide a great opportunity for more people to get involved with technology and for more non-profit 
-      oriented projects to get off the ground</li>
-      <li>OCaml and MirageOS: when I first learnt about functional programming I didn't get it, now it's hard not to use it. 
-      MirageOS is a library operating system for building unikernels - they are small, low-power, secure OSes.</li>
-      <li>RISC-V: the open source specification for a RISC ISA which enables anybody to build their own processors and extend them
-      in whatever way suits them - there is a big opportunity here for developing highly specialised, secure, low-power processors.</li>
-      <li>Environmentalism: it's probably somewhat obvious from the number of times I said "low-power" but the tech industry has a duty to 
-      (a) lower its carbon footprint and (b) providing tooling for tackling climate change.</li>
-    </ul>
+    |} [Components.simple_list ~items:passions] {|
     </div>
-  |}] in wrapper ~title:"About" ~content
+  |}] in Components.header_wrapper ~title:"About" ~content
 
 let to_html doc = Format.asprintf "%a" (Tyxml.Html.pp ()) doc
