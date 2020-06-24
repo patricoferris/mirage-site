@@ -17,7 +17,7 @@ The tool of choice is the open-source CMS from [Netlify](https://www.netlifycms.
 
 The Netlify CMS expects this to be handled by a server with specific endpoints to do certain jobs. I based the Mirage solution on [this great blog post](https://tylergaw.com/articles/netlify-cms-custom-oath-provider/).
 
-![The Github + OAuth + Netlify CMS Workflow](/static/images/oauth.png)
+![The Github + OAuth + Netlify CMS Workflow](images/oauth.png)
 
 Instead of a separate server for authentication I used my own website. Most of the code is contained in the [oauth.ml](https://github.com/patricoferris/mirage-site/blob/master/src/oauth.ml) file. The image above gives a good overview of the basic mechanics of OAuth with Github and Netlify CMS. Initially you must register a new application on Github for your website to get the `client_id` and the `client_secret`. It is also important to set the "Authorization Callback URL" this will perform step (3) in the diagram e.g. `https://patricoferris.com/callback`.
 
