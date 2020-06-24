@@ -26,10 +26,6 @@ module Make (S : Cohttp_lwt.S.Server) = struct
   let auth_url client_id = "https://github.com/login/oauth/authorize?client_id=" ^ client_id ^ "&scope=repo,user`"
   let token_url = "https://github.com/login/oauth/access_token"
 
-  let log_src = Logs.Src.create "oauth" ~doc:"oauth"  
-  module Log = (val Logs.src_log log_src : Logs.LOG)
-  let log_info s = Log.info (fun f -> f "%s" s)
-
   let extract_code query = 
     let questions = split '?' query in 
     let equals = List.flatten (List.map (split '=') questions) in 
@@ -47,12 +43,10 @@ module Make (S : Cohttp_lwt.S.Server) = struct
   
   let oauth_post ctx req client_id client_secret = 
     let code = extract_code (Cohttp.Request.resource req) in
-    log_info (build_post ~code ~client_id ~client_secret); 
     let body = Cohttp_lwt.Body.of_string @@ build_post ~code ~client_id ~client_secret in
     let headers = Cohttp.Header.of_list [("Content-Type", "application/json"); ("Accept", "application/json")] in 
       C.post ~ctx ~headers ~body (Uri.of_string token_url) >>= fun (res, body) -> 
       Cohttp_lwt.Body.to_string body >>= fun body ->
-              log_info body; 
         let json = Json.from_string body in 
         let token = List.hd (Json.Util.filter_member "access_token" [json]) in 
         let open Json.Util in 

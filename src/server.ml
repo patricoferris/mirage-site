@@ -13,6 +13,7 @@ module Make
 
   type s = Conduit_mirage.server -> S.t -> unit Lwt.t
 
+  (* Logging Utils *)
   let log_src = Logs.Src.create "server" ~doc:"server"  
   module Log = (val Logs.src_log log_src : Logs.LOG)
   let log_info s = Log.info (fun f -> f "%s" s)
@@ -24,6 +25,7 @@ module Make
     | Ok data -> data 
     | Error e -> err "%a" FS.pp_error e
 
+  (* The OAuth Authentication module *)
   module Auth = Oauth.Make(S) 
 
   (* ~ Irmin + Mirage ~ 
@@ -130,24 +132,28 @@ module Make
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
   let router fs gs cache resolver conduit req body uri = match uri with 
-      | ["admin"; ""] -> fun () -> static_file_handler fs ["admin"; "index.html"]
-      | "admin" :: tl -> fun () -> static_file_handler fs uri 
-      | ["config.yml"] -> fun () -> static_file_handler fs ["admin"; "config.yml"] 
-      | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
-      | ["about"] -> fun () -> serve_a_page Pages.about
-      | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img
-      | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
-      | "drafts" :: tl -> fun () -> blog_handler gs.store ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
-      | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
+    (* Netlify CMS endpoints *)
+    | ["admin"; ""] -> fun () -> static_file_handler fs ["admin"; "index.html"]
+    | "admin" :: tl -> fun () -> static_file_handler fs uri 
+    | ["config.yml"] -> fun () -> static_file_handler fs ["admin"; "config.yml"] 
+    (* Main website endpoints *)
+    | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
+    | ["about"] -> fun () -> serve_a_page Pages.about
+    | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img
+    | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
+    | "drafts" :: tl -> fun () -> blog_handler gs.store ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
+    (* Sync blog content *)
+    | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
         Cache.flush cache;
         let body = "Succesful sync" in 
         let headers = get_headers "text/html" (String.length body) in 
         S.respond_string ~headers ~body ~status:`OK ~flush:false ()
-      | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index  
-      | ["auth"] -> fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
-      | [callback] when String.(equal (sub callback 0 8) "callback") -> 
-        fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
-      | _ -> fun () -> static_file_handler fs uri
+    | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index  
+    (* Authentication with OAuth *)
+    | ["auth"] -> fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
+    | [callback] when String.(equal (sub callback 0 8) "callback") -> 
+      fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
+    | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 
     let dom::p = String.split_on_char '/' path in p 
@@ -163,17 +169,16 @@ module Make
     in
     S.make ~callback ~conn_closed ()
 
-
   (* ~ TLS for Secure HTTP ~
    * X509 is the standard used for public key certificates.
    * https://github.com/mirage/mirage-skeleton/blob/master/applications/static_website_tls/dispatch.ml *)
    module X509 = Tls_mirage.X509(SEC)(Clock)
 
+  (* ~ TLS Configurations ~ *)
   let tls_init secrets = 
     X509.certificate secrets `Default >>= fun cert -> 
     let configuration = Tls.Config.server ~certificates:(`Single cert) () in 
     Lwt.return configuration
-
 
   let start server secrets fs resolver conduit _clock =
     tls_init secrets >>= fun cfg -> (* Create the TLS config *)

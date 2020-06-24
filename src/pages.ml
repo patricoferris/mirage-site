@@ -69,7 +69,7 @@ let about =
     {|Environmentalism: it's probably somewhat obvious from the number of times I said "low-power" but the tech industry has a duty to 
       (a) lower its carbon footprint and (b) providing tooling for tackling climate change.|}] in 
   let content = [%html {|
-    <div class="container-three-by-one nav">
+    <div id="nav" class="container-three-by-one">
       <div class="one-one">@patricoferris</div>
       <div class="nav-buttons" style="width: 100%;">
         <div class="container-three-by-one">
