@@ -2,7 +2,7 @@
 authors:
   - Patrick Ferris
 title: Unikernel Site
-updated: 2020-06-24T00:00:00.000Z
+updated: 2020-06-24
 tags:
   - mirage
   - irmin
