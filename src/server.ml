@@ -130,7 +130,9 @@ module Make
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
   let router fs gs cache resolver conduit req body uri = match uri with 
+      | ["admin"; ""] -> fun () -> static_file_handler fs ["admin"; "index.html"]
       | "admin" :: tl -> fun () -> static_file_handler fs uri 
+      | ["config.yml"] -> fun () -> static_file_handler fs ["admin"; "config.yml"] 
       | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
       | ["about"] -> fun () -> serve_a_page Pages.about
       | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img

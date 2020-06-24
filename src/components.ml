@@ -13,7 +13,8 @@ let header_wrapper ~title ~content = [%html{|
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
       <script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/languages/ocaml.min.js"></script>
       <script>hljs.initHighlightingOnLoad();</script>
-    </head>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+      </head>
     <body>|} content {|
     </body>
   </html>

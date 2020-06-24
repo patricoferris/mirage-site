@@ -24,7 +24,7 @@ let index = [%html {|
     <div class="content">
       <div class="container-two-by-one">
         <div class="one-one">
-          <img style="width: 100%;" src="./me.jpg" alt="A picture of the author standing in Pembroke College, Cambridge">
+          <img style="width: 100%;" src="/images/me.jpg" alt="A picture of the author standing in Pembroke College, Cambridge">
         </div>
         <div class="one-two">
           <h3>Yep, another computer scientist's <em>corner of the web</em>... at least it's a MirageOS Unikernel!</h3>

@@ -4,18 +4,19 @@ module Json = Yojson.Basic
 let split = String.split_on_char 
 
 let script msg = "
-<script>
+<script>  
   (function() {
     function recieveMessage(e) {
-      console.log(\"recieveMessage %o\", e);
+      console.log('recieveMessage %o', e);
       // send message to main window with the app
+      console.log(" ^ msg ^ ")
       window.opener.postMessage(
-        'authorization:github:success:" ^ msg ^ ", 
+        'authorization:github:success:" ^ msg ^ "', 
         e.origin
       );
     }
-    window.addEventListener(\"message\", recieveMessage, false);
-    window.opener.postMessage(\"authorizing:github\", \"*\");
+    window.addEventListener('message', recieveMessage, false);
+    window.opener.postMessage('authorizing:github', '*');
   })()
 </script>
 "
@@ -55,12 +56,13 @@ module Make (S : Cohttp_lwt.S.Server) = struct
         let json = Json.from_string body in 
         let token = List.hd (Json.Util.filter_member "access_token" [json]) in 
         let open Json.Util in 
-        let msg = Json.to_string @@ `Assoc [("token", `String (Json.to_string token)); ("provider", `String "github")] in 
+        let msg = Json.to_string @@ `Assoc [("token", token); ("provider", `String "github")] in 
+        let body = script msg in 
         let headers = Cohttp.Header.of_list
-          [ "content-length", string_of_int (String.length msg);
+          [ "content-length", string_of_int (String.length body);
             "content-type", "text/html";
             "connection", "close" ] in
-          S.respond_string ~body:msg ~status:`OK ~flush:false () 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false () 
 
   let oauth_router ~resolver ~conduit ~req ~body ~client_id ~client_secret ~uri = match uri with 
     | ["auth"] -> S.respond_redirect (Uri.of_string (auth_url client_id)) ()
