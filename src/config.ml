@@ -29,6 +29,7 @@ let packages = [
   package "cohttp-mirage"; 
   package "irmin-mirage-git";
   package "yaml";
+  package "yojson";
   package "omd";
   package "fpath";
   package "duration";

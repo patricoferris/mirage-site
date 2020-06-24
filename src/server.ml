@@ -24,6 +24,8 @@ module Make
     | Ok data -> data 
     | Error e -> err "%a" FS.pp_error e
 
+  module Auth = Oauth.Make(S)(Cohttp_mirage.Client) 
+
   (* ~ Irmin + Mirage ~ 
    * Using Irmin we can create a Mirage KV_RO for blogs *)
   module Store = Irmin_mirage_git.Mem.KV(Irmin.Contents.String)
@@ -102,7 +104,7 @@ module Make
   (* ~ Static File Handler ~
    * Serves up files like index.html, main.css, javascript etc. *)
   let static_file_handler device filename = 
-    let filename = if List.length filename == 1 then List.hd filename else "unknown" in 
+    let filename = if List.length filename >= 1 then concat filename else "unknown" in 
     file_read device filename >>= function
       | body -> begin match Fpath.get_ext (Fpath.v filename) with
         | ".html" -> let headers = get_headers "text/html" (String.length body) in 
@@ -113,6 +115,8 @@ module Make
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
         | ".svg" -> let headers = get_headers "image/svg+xml" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
+        | ".yml" -> let headers = get_headers "text/yml" (String.length body) in 
+          S.respond_string ~headers ~body ~status:`OK ~flush:false () 
         | _ -> S.respond_not_found ~uri:(Uri.of_string filename) ()
       end
 
@@ -125,7 +129,9 @@ module Make
    * Unsurprisingly handles sending data to clients. For blog posts 
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
-  let router fs gs cache uri = match uri with 
+  let router fs gs cache req body uri = match uri with 
+      | "admin" :: tl -> fun () -> static_file_handler fs uri 
+      (* | ["auth"] | ["callback"] -> fun *)
       | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
       | ["about"] -> fun () -> serve_a_page Pages.about
       | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img
@@ -144,9 +150,9 @@ module Make
   
   let create domain router =
     let hdr = match fst domain with `Http -> "HTTP" | `Https -> "HTTPS" in
-    let callback _conn req _body =
+    let callback _conn req body =
       let uri = Request.uri req |> Uri.path |> split_path in 
-      router uri () in 
+      router req body uri () in 
     let conn_closed (_,conn_id) =
       let cid = Cohttp.Connection.to_string conn_id in
       Log.debug (fun f -> f "[%s %s] OK, closing" hdr cid)
