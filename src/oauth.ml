@@ -20,7 +20,8 @@ let script msg = "
 </script>
 "
 
-module Make (S : Cohttp_lwt.S.Server) (C : Cohttp_lwt.S.Client) = struct 
+module Make (S : Cohttp_lwt.S.Server) = struct
+  module C = Cohttp_mirage.Client  
   let auth_url client_id = "https://github.com/login/oauth/authorize?client_id=" ^ client_id ^ "&scope=repo,user`"
   let token_url = "https://github.com/login/oauth/access_token"
 
@@ -43,13 +44,14 @@ module Make (S : Cohttp_lwt.S.Server) (C : Cohttp_lwt.S.Client) = struct
     let json = `Assoc [("client_id", `String client_id); ("client_secret", `String client_secret); ("code", `String code)] in 
       Json.to_string json
   
-  let oauth_post req client_id client_secret = 
-    let code = extract_code (Cohttp.Request.resource req) in 
+  let oauth_post ctx req client_id client_secret = 
+    let code = extract_code (Cohttp.Request.resource req) in
+    log_info (build_post ~code ~client_id ~client_secret); 
     let body = Cohttp_lwt.Body.of_string @@ build_post ~code ~client_id ~client_secret in
-    let headers = Cohttp.Header.of_list [("Accept", "application/json")] in 
-      C.post ~headers ~body (Uri.of_string token_url) >>= fun (res, body) -> 
+    let headers = Cohttp.Header.of_list [("Content-Type", "application/json"); ("Accept", "application/json")] in 
+      C.post ~ctx ~headers ~body (Uri.of_string token_url) >>= fun (res, body) -> 
       Cohttp_lwt.Body.to_string body >>= fun body ->
-              log_info body;
+              log_info body; 
         let json = Json.from_string body in 
         let token = List.hd (Json.Util.filter_member "access_token" [json]) in 
         let open Json.Util in 
@@ -60,8 +62,8 @@ module Make (S : Cohttp_lwt.S.Server) (C : Cohttp_lwt.S.Client) = struct
             "connection", "close" ] in
           S.respond_string ~body:msg ~status:`OK ~flush:false () 
 
-  let oauth_router ~req ~body ~client_id ~client_secret ~uri = match uri with 
+  let oauth_router ~resolver ~conduit ~req ~body ~client_id ~client_secret ~uri = match uri with 
     | ["auth"] -> S.respond_redirect (Uri.of_string (auth_url client_id)) ()
-    | _ -> oauth_post req client_id client_secret
+    | _ -> oauth_post (C.ctx resolver conduit) req client_id client_secret
 end 
   

@@ -24,7 +24,7 @@ module Make
     | Ok data -> data 
     | Error e -> err "%a" FS.pp_error e
 
-  module Auth = Oauth.Make(S)(Cohttp_mirage.Client) 
+  module Auth = Oauth.Make(S) 
 
   (* ~ Irmin + Mirage ~ 
    * Using Irmin we can create a Mirage KV_RO for blogs *)
@@ -129,7 +129,7 @@ module Make
    * Unsurprisingly handles sending data to clients. For blog posts 
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
-  let router fs gs cache req body uri = match uri with 
+  let router fs gs cache resolver conduit req body uri = match uri with 
       | "admin" :: tl -> fun () -> static_file_handler fs uri 
       | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
       | ["about"] -> fun () -> serve_a_page Pages.about
@@ -142,9 +142,9 @@ module Make
         let headers = get_headers "text/html" (String.length body) in 
         S.respond_string ~headers ~body ~status:`OK ~flush:false ()
       | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index  
-      | ["auth"] -> fun () -> Auth.oauth_router ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
+      | ["auth"] -> fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
       | [callback] when String.(equal (sub callback 0 8) "callback") -> 
-        fun () -> Auth.oauth_router ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
+        fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
       | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 
@@ -183,6 +183,6 @@ module Make
     init_blog_store ~resolver ~conduit ~uri:remote >>= fun gs ->  
     sync gs.remote >>= fun _ -> (* Syncing blog content initially *)
     let cache = Cache.create 10 in (* Creating the cache *)
-    let callback = create domain (router fs gs cache) in
+    let callback = create domain (router fs gs cache resolver conduit) in
       server tls callback
 end 

@@ -48,7 +48,7 @@ let packages = [
 
 (********* Setting up implementations *********)
 let stack = generic_stackv4 default_network 
-let cond = conduit_direct stack 
+let cond = conduit_direct ~tls:true stack 
 let resolver = resolver_dns stack
 let filesfs = generic_kv_ro ~key:fs_key "../static"
 let secrets = generic_kv_ro ~key:tls_key "../secrets"
