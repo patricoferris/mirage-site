@@ -1,5 +1,7 @@
 backend:
   name: git-gateway
+  repo: patricoferris/mirage-site
+  base_url: https://patricoferris.com
   branch: master
 
 publish_mode: editorial_workflow

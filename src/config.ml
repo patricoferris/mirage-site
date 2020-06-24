@@ -22,7 +22,16 @@ let host_key =
   in
   Key.(create "host" Arg.(opt string "localhost" doc))
 
-let keys = Key.([ abstract host_key; abstract https_port; abstract git_remote])
+(* OAuth *)
+let client_id =
+  let doc = Key.Arg.info ~doc:"OAuth Client Id" ["client-id"] in 
+    Key.(create "client-id" Arg.(opt ~stage:`Both string "abc" doc))
+
+let client_secret = 
+  let doc = Key.Arg.info ~doc:"OAuth Client Secret" ["client-secret"] in 
+    Key.(create "client-secret" Arg.(opt ~stage:`Both string "123" doc))
+
+let keys = Key.([ abstract host_key; abstract https_port; abstract git_remote; abstract client_id; abstract client_secret])
 let packages = [ 
   package "tyxml-ppx";
   package "tyxml";

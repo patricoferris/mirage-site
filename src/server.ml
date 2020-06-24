@@ -131,7 +131,6 @@ module Make
    * static files like the rest of the cases. *)
   let router fs gs cache req body uri = match uri with 
       | "admin" :: tl -> fun () -> static_file_handler fs uri 
-      (* | ["auth"] | ["callback"] -> fun *)
       | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
       | ["about"] -> fun () -> serve_a_page Pages.about
       | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img
@@ -142,7 +141,10 @@ module Make
         let body = "Succesful sync" in 
         let headers = get_headers "text/html" (String.length body) in 
         S.respond_string ~headers ~body ~status:`OK ~flush:false ()
-      | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index
+      | [""] | ["/"] | ["index.html"] -> fun () -> serve_a_page Pages.index  
+      | ["auth"] -> fun () -> Auth.oauth_router ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
+      | [callback] when String.(equal (sub callback 0 8) "callback") -> 
+        fun () -> Auth.oauth_router ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
       | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 
