@@ -2,7 +2,7 @@
 authors:
   - Patrick Ferris
 title: The MIM Stack
-updated: June 25, 2020 12:11 AM
+updated: June 25, 2020 6:51 PM
 tags:
   - mirage
   - irmin
