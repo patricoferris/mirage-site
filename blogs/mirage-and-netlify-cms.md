@@ -30,7 +30,7 @@ let auth_url client_id =
 S.respond_redirect (Uri.of_string (auth_url client_id)) ()
 ```
 
-With the `client_id`, Github knows to send the token to the callback we registered earlier. We extract that from the URI. 
+With the `client_id`, Github knows to send the token to the callback endpoint we registered earlier. We extract that from the URI. 
 
 ```ocaml
 let extract_code query = 
