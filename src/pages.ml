@@ -35,7 +35,7 @@ let index = [%html {|
   </html>
 |}]
 
-let page_template ~title ~content = 
+let page_template ?date:(date="") ~title ~content = 
   let content = Html.Unsafe.data content in
   let html = [%html {|
   <div id="nav" class="container-three-by-one">
@@ -49,8 +49,10 @@ let page_template ~title ~content =
     </div>
   </div>
   <div class="content">
-  <h1>|} [Html.txt title] {|</h1>|}[content]{|</div>
-|}] in Components.header_wrapper ~title ~content:html
+    <h1>|} [Html.txt title] {|</h1>
+    <p>|} [Html.txt date] {|</p>|}
+    [content]
+{|</div>|}] in Components.header_wrapper ~title ~content:html
 
 let blog_page blogs = 
   let content = List.map (fun link -> [%html "<div><a href="link">"[Html.txt link]"</a></div>"]) blogs in

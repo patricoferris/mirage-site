@@ -2,7 +2,7 @@ open Tyxml
 
 type t = {
   authors: string list;
-  updated: Date.t option;
+  updated: string option;
   title: string;
   tags: string list option;
   subtitle: string option;

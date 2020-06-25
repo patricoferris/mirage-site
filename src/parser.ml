@@ -11,7 +11,7 @@ module YamlMarkdown = struct
 
   let empty_post : Blog.t = {
     authors = [];
-    updated = Some (Date.datify 1998 "December" 25);
+    updated = None;
     title = "The Empty Post";
     tags = None; 
     subtitle = None;
@@ -29,11 +29,6 @@ module YamlMarkdown = struct
     else 
       None
 
-  let parse_date date = 
-    match String.split_on_char '-' date with  
-    | year::month::day::[] -> Some (Date.datify (int_of_string year) month (int_of_string day))
-    | _ -> None 
-
   let rec extract_string = function 
     | [] -> [] 
     | (`String s) :: xs -> s :: (extract_string xs)
@@ -45,16 +40,18 @@ module YamlMarkdown = struct
     | ("tags", `A tags) :: xs -> match_yaml ({post with tags = (Some (extract_string tags))}) xs 
     | ("title", `String title) :: xs -> match_yaml ({post with title}) xs 
     | ("subtitle", `String subtitle) :: xs -> match_yaml ({post with subtitle = (Some subtitle)}) xs 
-    | ("updated", `String updated) :: xs -> match_yaml ({post with updated = (parse_date updated)}) xs 
+    | ("updated", `String updated) :: xs -> match_yaml ({post with updated = (Some updated)}) xs 
     | _ -> None
 
   let blogify yaml content = 
     let yaml = Yaml.of_string_exn (String.concat "\n" yaml) in 
     let build_post (pairs : Yaml.value) = match pairs with 
       | (`O kvpairs) -> match_yaml empty_post kvpairs
-      | _ -> None in 
+      | _ -> None in
     let post = build_post yaml in match post with 
-      | Some post -> Ok ({post with content = Pages.page_template ~title:post.title ~content:(Omd.(to_html (of_string content))) })
+      | Some post -> 
+        let date = match post.updated with Some d -> d | None -> "" in               
+        Ok ({post with content = Pages.page_template ~date ~title:post.title ~content:(Omd.(to_html (of_string content))) })
       | None -> Error (`MalformedBlogPost ("Building Failed: " ^ content))
 
   let of_string content = 
