@@ -58,7 +58,7 @@ let ctx = C.ctx resolver conduit in
   C.post ~ctx ~headers ~body (Uri.of_string token_url) 
 ```
 
-For the most part this is relatively standard for an HTTP client. HTTP requests need some [headers and a body](https://tools.ietf.org/html/rfc2616#section-4.2). The `~ctx` parameter is Mirage specific and I think worth explaining. 
+This is pretty much standard for an HTTP client. HTTP requests need some [headers and a body](https://tools.ietf.org/html/rfc2616#section-4.2). The `~ctx` parameter is Mirage specific and I think worth explaining. 
 
 Machines are connected together on the internet by a series of protocols. The most widely used and taught is the [OSI model](https://en.wikipedia.org/wiki/OSI_model). 
 
