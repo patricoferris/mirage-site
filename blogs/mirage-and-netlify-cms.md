@@ -75,7 +75,7 @@ The last things to add our the necessary [configuration](https://www.netlifycms.
 
 ## Github Actions 
 
-With the Netlify CMS backend blogposts are much easier to write and edit. The metadata is also automatically handled. For non-technical users it also removes the need for understanding git and Github! The final touch is to add a [Github Action](https://github.com/features/actions) to hit the synchronisation endpoint whenever new content is pushed to the repository. This is found [here](https://github.com/patricoferris/mirage-site/tree/master/.github/workflows).
+With the Netlify CMS backend, blogposts are much easier to write and edit. The metadata is also automatically handled. For non-technical users it also removes the need for understanding git and Github! The final touch is to add a [Github Action](https://github.com/features/actions) to hit the synchronisation endpoint whenever new content is pushed to the repository. This is found [here](https://github.com/patricoferris/mirage-site/tree/master/.github/workflows).
 
 
 
