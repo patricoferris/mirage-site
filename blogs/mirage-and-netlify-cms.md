@@ -45,7 +45,27 @@ let extract_code query =
       get_code apersand
 ```
 
+## OCaml Cohttp
+
 For step (3) we build a small JSON object containing the `code` (token), `client_id` and `client_secret`. This is then sent as an HTTP POST to the Github OAuth endpoint `"https://github.com/login/oauth/access_token"`. 
+
+To send HTTP requests, we will use the [cohttp](https://github.com/mirage/ocaml-cohttp) library which builds HTTP daemons. In particular the Mirage HTTP Client module is what we will need. 
+
+```ocaml
+module C = Cohttp_mirage.Client
+(* ... *)
+let ctx = C.ctx resolver conduit in 
+  C.post ~ctx ~headers ~body (Uri.of_string token_url) 
+```
+
+For the most part this is relatively standard for an HTTP client. HTTP requests need some [headers and a body](https://tools.ietf.org/html/rfc2616#section-4.2). The `~ctx` parameter is Mirage specific and I think worth explaining. 
+
+Machines are connected together on the internet by a series of protocols. The most widely used and taught is the [OSI model](https://en.wikipedia.org/wiki/OSI_model). 
+
+Remember, Mirage Unikernels are completely bare-bones. You can't (as I often have when getting started with them) assume that anything already exists. Whilst confusing at the beginning, it makes you appreciative of the number of assumptions you make when programming in other environments. 
+
+When 
+ 
 
 In the last step, making the access token available to the Netlify CMS code, I've followed the approach laid out [here](https://github.com/vencax/netlify-cms-github-oauth-provider/blob/master/index.js#L74). It involves using the `Window.postMessage` [API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to pass the access token back to the original window. This is a bit ugly in the code and involves responding with a `<script>` which handles this. 
 
