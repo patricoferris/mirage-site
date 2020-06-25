@@ -69,7 +69,7 @@ This short example comes directly from the [pages module](https://github.com/pat
 
 Irmin is powerful library for creating and interacting with Git-like datastores. For this blog it creates an in-memory, key-value store using the Mirage backend for Irmin. 
 
-With an in-memory Git store we can actually - at runtime - sync our content just like syncing a git repository with `git pull`! This means we can update our content, push to wherever we are holding it and synchronise our unikernel all without having to rebuild it.
+With an in-memory Git store we can actually - at runtime - synchronise our content just like syncing a git repository with `git pull`! This means we can update our content, push to wherever we are holding it and synchronise our unikernel all without having to rebuild it.
 
 To do this, the unikernel accepts a `git-remote` key. It then initialises the Irmin store and exposes an endpoint which can be used to synchronise the content of the blog. 
 
