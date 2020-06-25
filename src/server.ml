@@ -35,10 +35,17 @@ module Make
 
   (* ~ Irmin magic ~
    * We can, at runtime, use Irmin to update the contents! *)
-   let sync remote =
-    let in_mem_config = Irmin_mem.config () in   
-      Store.Repo.v in_mem_config >>= Store.master >>= fun t ->
-      Sync.pull_exn t remote `Set
+let sync ~conduit ~resolver =
+  let upstream = Store.remote ~conduit ~resolver (Key_gen.git_remote ()) in
+  Store.Repo.v (Irmin_mem.config ()) >>= Store.master  >>= fun t ->
+  Log.info (fun f -> f "pulling repository") ;
+  Lwt.catch
+    (fun () ->
+       Sync.pull_exn t upstream `Set >|= fun _ ->
+       Log.info (fun f -> f "repository pulled"))
+    (fun e ->
+       Log.warn (fun f -> f "failed pull %a" Fmt.exn e);
+       Lwt.return ())
 
  (* Querying the Irmin store for the blog and static content *)
   let content_read store name = 
@@ -136,7 +143,7 @@ module Make
     | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
     | "drafts" :: tl -> fun () -> blog_handler gs.store ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
     (* Sync blog content *)
-    | ["sync"] -> fun () -> sync gs.remote >>= fun _ -> 
+    | ["sync"] -> fun () -> sync ~resolver ~conduit >>= fun _ -> 
         Cache.flush cache;
         let body = "Succesful sync" in 
         let headers = get_headers "text/html" (String.length body) in 
@@ -181,7 +188,7 @@ module Make
     let remote = Key_gen.git_remote () in (* Git remote for blog content *)
     let domain = `Https , host in (* Domain for router *)
     init_blog_store ~resolver ~conduit ~uri:remote >>= fun gs ->  
-    sync gs.remote >>= fun _ -> (* Syncing blog content initially *)
+    sync ~resolver ~conduit  >>= fun _ -> (* Syncing blog content initially *)
     let cache = Cache.create 10 in (* Creating the cache *)
     let callback = create domain (router gs cache resolver conduit) in
       server tls callback

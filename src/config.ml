@@ -7,7 +7,7 @@ let https_port =
 
 let git_remote = 
   let doc = Key.Arg.info ~doc:"Git remote URI" ["git-remote"] in 
-    Key.(create "git-remote" Arg.(opt ~stage:`Both string "git://github.com/patricoferris/mirage-site.git" doc))
+    Key.(create "git-remote" Arg.(opt ~stage:`Both string "https://github.com/patricoferris/mirage-site.git" doc))
 
 let tls_key = 
   Key.(value @@ kv_ro ~group:"certs" ())
