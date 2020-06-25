@@ -62,7 +62,7 @@ For the most part this is relatively standard for an HTTP client. HTTP requests 
 
 Machines are connected together on the internet by a series of protocols. The most widely used and taught is the [OSI model](https://en.wikipedia.org/wiki/OSI_model). 
 
-Remember, Mirage Unikernels are completely bare-bones. You can't (as I often have when getting started with them) assume that anything already exists. Whilst confusing at the beginning, it makes you appreciative of the number of assumptions you make when programming in other environments. 
+Remember, Mirage Unikernels are completely bare-bones. Nothing can be assumed to already exist. Whilst confusing at the beginning, it makes you appreciative of the number of assumptions you make when programming in other environments. 
 
 When 
  
