@@ -2,7 +2,7 @@
 authors:
   - Patrick Ferris
 title: MirageOS and Netlify CMS
-updated: June 25, 2020 12:10 AM
+updated: June 25, 2020 6:28 PM
 tags:
   - mirage
   - netlify
