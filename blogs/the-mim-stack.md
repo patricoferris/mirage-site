@@ -10,8 +10,6 @@ tags:
   - unikernel
 ---
 
-W/out TLS :D 
-
 ![Convention OS Stack and Mirage Stack](/images/stack.svg)
 
 MirageOS is a library operating system (OS) for building unikernels. Conventionally OSes are large programs that sit between hardware and applications providing an interface between them. In their quest to be useful in as many places as possible, they tend to grow very large and can seem cumbersome when you only want very specific parts of the OS. 
