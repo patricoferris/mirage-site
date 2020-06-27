@@ -154,4 +154,6 @@ For an actual blog, we hand over control to a `blog_handler` function. The basic
 3. Pass this content along to `Parser.YamlMarkdown.of_string` to generate the blog, cache it and serve the content. 
 4. Handle any errors gracefully! 
 
-🐛
+🐛🐛
+
+  - markdown
