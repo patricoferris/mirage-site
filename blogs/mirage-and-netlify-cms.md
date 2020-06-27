@@ -64,9 +64,6 @@ Machines are connected together on the internet by a series of protocols. The mo
 
 Remember, Mirage Unikernels are completely bare-bones. Nothing can be assumed to already exist. Whilst confusing at the beginning, it makes you appreciative of the number of assumptions you make when programming in other environments. 
 
-When 
- 
-
 In the last step, making the access token available to the Netlify CMS code, I've followed the approach laid out [here](https://github.com/vencax/netlify-cms-github-oauth-provider/blob/master/index.js#L74). It involves using the `Window.postMessage` [API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to pass the access token back to the original window. This is a bit ugly in the code and involves responding with a `<script>` which handles this. 
 
 ## Netlify CMS Configuration
