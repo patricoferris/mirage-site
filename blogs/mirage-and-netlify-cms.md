@@ -49,7 +49,7 @@ let extract_code query =
 
 For step (3) we build a small JSON object containing the `code` (token), `client_id` and `client_secret`. This is then sent as an HTTP POST to the Github OAuth endpoint `"https://github.com/login/oauth/access_token"`. 
 
-To send HTTP requests, we will use the [cohttp](https://github.com/mirage/ocaml-cohttp) library which builds HTTP daemons. In particular the Mirage HTTP Client module is what we will need. 
+To send HTTP requests, we will use the [cohttp](https://github.com/mirage/ocaml-cohttp) library which builds HTTP daemons. In particular, we need the Mirage HTTP Client module to make requests to some Github endpoints. 
 
 ```ocaml
 module C = Cohttp_mirage.Client
