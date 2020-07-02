@@ -33,6 +33,7 @@ let packages = [
   package "tyxml-ppx";
   package "tyxml";
   package "cohttp-mirage"; 
+  package "irmin-git";
   package "irmin-mirage-git";
   package "yaml";
   package "yojson";

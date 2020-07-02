@@ -21,35 +21,56 @@ module Make
   module Auth = Oauth.Make(S) 
 
   (* ~ Irmin + Mirage ~ 
-   * Using Irmin we can create a Mirage KV_RO for blogs *)
-  module Store = Irmin_mirage_git.Mem.KV(Irmin.Contents.String)
-  module Sync = Irmin.Sync(Store)
+   * Using Irmin we can create a Mirage KV_RO for blogs.
+   * The following is a hack - the only way (AFAIK) to create
+   * new in memory stores is my recreating the store module hence
+   * on sync we will use modules as values to reinitialise the store.
+   * The reason for doing so is that currently there is a bug in ocaml-git 
+   * causing Sync.pull to crash :// *)
+  
+  module StoreType = Irmin_mirage_git.Mem.KV(Irmin.Contents.String)
+  module type KVStoreType = Irmin_mirage_git.S with type key = Irmin.Path.String_list.t and type step = string
+  and module Key = Irmin.Path.String_list and type contents = Irmin.Contents.String.t and type branch = string 
+  and module Git = Irmin_mirage_git.Mem.G
 
-  type git_store = {store: Store.t; remote: Irmin.remote}
+  module Find (S: KVStoreType) = struct 
+   let find store name = S.find store name
+  end 
+  
+  type git_store = {
+    remote: Irmin.remote; 
+    mutable store_module: (module KVStoreType) 
+  }
 
   (* Initialising the blog store with a uri and a repo *)
   let init_blog_store ~resolver ~conduit ~uri = 
     let in_mem_config = Irmin_mem.config () in   
-      Store.Repo.v in_mem_config >>= Store.master >|= fun repo -> 
-      {store = repo; remote = Store.remote ~resolver ~conduit uri}
+    let module Store = Irmin_mirage_git.Mem.KV(Irmin.Contents.String) in   
+    Store.Repo.v in_mem_config >>= Store.master >|= fun store -> 
+      { remote = Store.remote ~resolver ~conduit uri; store_module = (module Store)}
 
   (* ~ Irmin magic ~
    * We can, at runtime, use Irmin to update the contents! *)
-let sync ~conduit ~resolver =
+let sync ~gs ~conduit ~resolver =
+  init_blog_store ~resolver ~conduit ~uri:(Key_gen.git_remote ()) >>= fun new_gs -> 
+  let module Store = (val new_gs.store_module) in 
+  let module Sync = Irmin.Sync(Store) in  
   let upstream = Store.remote ~conduit ~resolver (Key_gen.git_remote ()) in
-  Store.Repo.v (Irmin_mem.config ()) >>= Store.master  >>= fun t ->
+  Store.Repo.v (Irmin_mem.config ()) >>= Store.master >>= fun t ->
   Log.info (fun f -> f "pulling repository") ;
   Lwt.catch
     (fun () ->
        Sync.pull_exn t upstream `Set >|= fun _ ->
-       Log.info (fun f -> f "repository pulled"))
+               gs.store_module <- new_gs.store_module; Log.info (fun f -> f "repository pulled"))
     (fun e ->
        Log.warn (fun f -> f "failed pull %a" Fmt.exn e);
        Lwt.return ())
 
  (* Querying the Irmin store for the blog and static content *)
-  let content_read store name = 
-    Store.find store name >|= function
+  let content_read gs name = 
+    let module Store = (val gs.store_module) in 
+    Store.Repo.v (Irmin_mem.config ()) >>= Store.master >>= fun t ->
+    Store.find t name >|= function
       | Some data -> data
       | None -> err "%s" ("Could not find: " ^ (concat name))
 
@@ -63,18 +84,20 @@ let sync ~conduit ~resolver =
 
   (* ~ Blog page ~ 
    * Extracting the blog posts to serve them as an index *)
-  let blog_page store dir =
-    Store.list store [dir] >|= List.map fst >>= fun blogs -> 
+  let blog_page gs dir =
+    let module Store = (val gs.store_module) in 
+    Store.Repo.v (Irmin_mem.config ()) >>= Store.master >>= fun t ->
+    Store.list t [dir] >|= List.map fst >>= fun blogs -> 
     let blogs = List.map (fun blog -> dir ^ "/" ^ (Filename.chop_extension blog)) blogs in 
     let body = Pages.(to_html (blog_page blogs)) in 
     let headers = get_headers "text/html" (String.length body) in 
       S.respond_string ~headers ~body ~status:`OK ~flush:false () 
 
   (* ~ Image handling ~ *)
-  let image_handler store image = 
+  let image_handler gs image = 
     let image = concat image in 
     let name_list = Fpath.(segs (of_string image |> function Ok d -> d | Error _ -> err "Malformed %s" image)) in
-    content_read store name_list >>= fun body -> 
+    content_read gs name_list >>= fun body -> 
       match Fpath.get_ext (Fpath.v image) with
         | ".jpg" -> let headers = get_headers "image/jpg" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
@@ -106,8 +129,8 @@ let sync ~conduit ~resolver =
 
   (* ~ Static File Handler ~
    * Serves up files like index.html, main.css, javascript etc. *)
-  let static_file_handler store filename = 
-    content_read store filename >>= function
+  let static_file_handler gs filename = 
+    content_read gs filename >>= function
       | body -> begin match Fpath.get_ext (Fpath.v (concat filename)) with
         | ".html" -> let headers = get_headers "text/html" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
@@ -133,17 +156,17 @@ let sync ~conduit ~resolver =
    * static files like the rest of the cases. *)
   let router gs cache resolver conduit req body uri = match uri with 
     (* Netlify CMS endpoints *)
-    | ["admin"; ""] -> fun () -> static_file_handler gs.store ["admin"; "index.html"]
-    | "admin" :: tl -> fun () -> static_file_handler gs.store uri 
-    | ["config.yml"] -> fun () -> static_file_handler gs.store ["admin"; "config.yml"] 
+    | ["admin"; ""] -> fun () -> static_file_handler gs ["admin"; "index.html"]
+    | "admin" :: tl -> fun () -> static_file_handler gs uri 
+    | ["config.yml"] -> fun () -> static_file_handler gs ["admin"; "config.yml"] 
     (* Main website endpoints *)
-    | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
+    | ["blogs"] -> fun () -> blog_page gs "blogs" 
     | ["about"] -> fun () -> serve_a_page Pages.about
-    | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs.store img
-    | "blogs" :: tl -> fun () -> blog_handler gs.store ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
-    | "drafts" :: tl -> fun () -> blog_handler gs.store ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
+    | "blogs" :: "images" :: tl as img -> fun () -> image_handler gs img
+    | "blogs" :: tl -> fun () -> blog_handler gs ("blogs/" ^ (String.concat "" (tl @ [".md"]))) cache
+    | "drafts" :: tl -> fun () -> blog_handler gs ("drafts/" ^ (String.concat "" (tl @ [".md"]))) cache
     (* Sync blog content *)
-    | ["sync"] -> fun () -> sync ~resolver ~conduit >>= fun _ -> 
+    | ["sync"] -> fun () -> sync ~gs ~resolver ~conduit >>= fun _ -> 
         Cache.flush cache;
         let body = "Succesful sync" in 
         let headers = get_headers "text/html" (String.length body) in 
@@ -153,7 +176,7 @@ let sync ~conduit ~resolver =
     | ["auth"] -> fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
     | [callback] when String.(equal (sub callback 0 8) "callback") -> 
       fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
-    | _ -> fun () -> static_file_handler gs.store ("static"::uri)
+    | _ -> fun () -> static_file_handler gs ("static"::uri)
 
   let split_path path = 
     let dom::p = String.split_on_char '/' path in p 
@@ -188,7 +211,7 @@ let sync ~conduit ~resolver =
     let remote = Key_gen.git_remote () in (* Git remote for blog content *)
     let domain = `Https , host in (* Domain for router *)
     init_blog_store ~resolver ~conduit ~uri:remote >>= fun gs ->  
-    sync ~resolver ~conduit  >>= fun _ -> (* Syncing blog content initially *)
+    sync ~gs ~resolver ~conduit  >>= fun _ -> (* Syncing blog content initially *)
     let cache = Cache.create 10 in (* Creating the cache *)
     let callback = create domain (router gs cache resolver conduit) in
       server tls callback
