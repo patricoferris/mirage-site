@@ -133,9 +133,9 @@ module Make
    * static files like the rest of the cases. *)
   let router gs cache resolver conduit req body uri = match uri with 
     (* Netlify CMS endpoints *)
-    | ["admin"; ""] -> fun () -> static_file_handler gs.store ["admin"; "index.html"]
-    | "admin" :: tl -> fun () -> static_file_handler gs.store uri 
-    | ["config.yml"] -> fun () -> static_file_handler gs.store ["admin"; "config.yml"] 
+    | ["admin"; ""] -> fun () -> static_file_handler gs.store ["static"; "admin"; "index.html"]
+    | "admin" :: tl -> fun () -> static_file_handler gs.store ("static"::uri) 
+    | ["config.yml"] -> fun () -> static_file_handler gs.store ["static"; "admin"; "config.yml"] 
     (* Main website endpoints *)
     | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
     | ["about"] -> fun () -> serve_a_page Pages.about
