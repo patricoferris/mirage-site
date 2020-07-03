@@ -3,9 +3,14 @@ html {
   font-size: 1.1em;
 }
 
+h2 {
+  margin-top: 5%;
+  margin-bottom: -1%;
+}
+
 a {
   text-decoration: none;
-  color: orange;
+  color: #ff9900;
 }
 
 a:hover {
@@ -25,7 +30,7 @@ code {
 }
 
 .content {
-  padding: 0% 21%;
+  padding: 0% 24%;
 }
 
 .nav-buttons {

@@ -11,16 +11,7 @@ let index = [%html {|
     <title>Patrick Ferris</title>
   </head>
   <body> 
-    <div id="nav" class="container-three-by-one">
-      <div class="one-one">@patricoferris</div>
-      <div class="nav-buttons" style="width: 100%;">
-        <div class="container-three-by-one">
-          <div class="one-one"><a href="/">home</a></div>
-          <div class="one-two"><a href="/about">about</a></div>
-          <div class="one-three"><a href="/blogs">blog</a></div>
-        </div>
-      </div>
-    </div>
+    |} [Components.nav_bar]  {|
     <div class="content">
       <div class="container-two-by-one">
         <div class="one-one">
@@ -28,6 +19,7 @@ let index = [%html {|
         </div>
         <div class="one-two">
           <h3>Yep, another computer scientist's <em>corner of the web</em>... at least it's a MirageOS Unikernel!</h3>
+          <p>I graduated from <a href="https://www.pem.cam.ac.uk">Pembroke College</a> in 2020 and now I'm an open source source software engineer at <a href="https://tarides.com">Tarides</a> trying to solve real world problems... mostly in OCaml.</p>
         </div>
       </div>
     </div>
@@ -38,16 +30,7 @@ let index = [%html {|
 let page_template ?date:(date="") ~title ~content = 
   let content = Html.Unsafe.data content in
   let html = [%html {|
-  <div id="nav" class="container-three-by-one">
-    <div class="one-one">@patricoferris</div>
-    <div class="nav-buttons" style="width: 100%;">
-      <div class="container-three-by-one">
-        <div class="one-one"><a href="/">home</a></div>
-        <div class="one-two"><a href="/about">about</a></div>
-        <div class="one-three"><a href="/blogs">blog</a></div>
-      </div>
-    </div>
-  </div>
+  |} [Components.nav_bar]  {|
   <div class="content">
     <h1>|} [Html.txt title] {|</h1>
     <p>|} [Html.txt date] {|</p>|}
@@ -55,8 +38,14 @@ let page_template ?date:(date="") ~title ~content =
 {|</div>|}] in Components.header_wrapper ~title ~content:html
 
 let blog_page blogs = 
-  let content = List.map (fun link -> [%html "<div><a href="link">"[Html.txt link]"</a></div>"]) blogs in
-  let content = [%html "<div class=content><h1>Blog Posts</h1><div class=flex>"content"</div></div>"] in
+  let content = List.map (fun link -> [%html "<div style=\"margin-top: 10px\"><a href="link">"[Html.txt link]"</a></div>"]) blogs in
+  let content = [%html {|
+    <div class="content">
+      <h1>Blog Posts</h1>
+      <div class="flex">
+       |} content {|
+      </div>
+    </div> |}] in
   Components.header_wrapper ~title:"Blog Posts" ~content:[content]
 
 let about = 

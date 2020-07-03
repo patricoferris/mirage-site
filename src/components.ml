@@ -30,8 +30,12 @@ let simple_list ~items =
 
 let nav_bar = [%html {|
 <div id="nav" class="container-three-by-one">
-  <div class="one-one">@patricoferris</div>
-  <div class="nav-buttons" style="width: 100%;">
+   <div class="one-one">
+     <a style="color: black" href="https://twitter.com/patricoferris">
+       @patricoferris
+     </a>
+   </div>
+   <div class="nav-buttons" style="width: 100%;">
     <div class="container-three-by-one">
       <div class="one-one"><a href="/">home</a></div>
       <div class="one-two"><a href="/about">about</a></div>
