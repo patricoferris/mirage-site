@@ -6,6 +6,7 @@ let concat ss = String.concat "/" ss
 module Make 
   (S: Cohttp_lwt.S.Server) 
   (SEC : Mirage_kv.RO)
+  (FS : Mirage_kv.RO)
   (R : Resolver_lwt.S) 
   (C : Conduit_mirage.S)
   (Clock : Mirage_clock.PCLOCK) = struct
@@ -47,11 +48,18 @@ module Make
          Log.warn (fun f -> f "failed pull %a" Fmt.exn e);
          Lwt.return ())
 
- (* Querying the Irmin store for the blog and static content *)
+  (* Querying the Irmin store for the blog and static content *)
   let content_read store name = 
     Store.find store name >|= function
       | Some data -> data
       | None -> err "%s" ("Could not find: " ^ (concat name))
+  
+  (* Querying for static sources in our file system *) 
+  let fs_read fs filename =
+    let fn = concat filename in 
+    FS.get fs (Mirage_kv.Key.v fn) >>= function
+      | Error e -> err "%s" ("Could not find: " ^ fn)
+      | Ok body -> Lwt.return body
 
   (* ~ A helper for headers ~
    * A little function for constructing HTTP headers *)
@@ -107,7 +115,7 @@ module Make
   (* ~ Static File Handler ~
    * Serves up files like index.html, main.css, javascript etc. *)
   let static_file_handler store filename = 
-    content_read store filename >>= function
+    fs_read store filename >>= function
       | body -> begin match Fpath.get_ext (Fpath.v (concat filename)) with
         | ".html" -> let headers = get_headers "text/html" (String.length body) in 
           S.respond_string ~headers ~body ~status:`OK ~flush:false ()
@@ -131,11 +139,11 @@ module Make
    * Unsurprisingly handles sending data to clients. For blog posts 
    * it first has to generate the html instead of just sending down 
    * static files like the rest of the cases. *)
-  let router gs cache resolver conduit req body uri = match uri with 
+  let router gs fs cache resolver conduit req body uri = match uri with 
     (* Netlify CMS endpoints *)
-    | ["admin"; ""] -> fun () -> static_file_handler gs.store ["static"; "admin"; "index.html"]
-    | "admin" :: tl -> fun () -> static_file_handler gs.store ("static"::uri) 
-    | ["config.yml"] -> fun () -> static_file_handler gs.store ["static"; "admin"; "config.yml"] 
+    | ["admin"; ""] -> fun () -> static_file_handler fs ["admin"; "index.html"]
+    | "admin" :: tl -> fun () -> static_file_handler fs uri 
+    | ["config.yml"] -> fun () -> static_file_handler fs ["admin"; "config.yml"] 
     (* Main website endpoints *)
     | ["blogs"] -> fun () -> blog_page gs.store "blogs" 
     | ["about"] -> fun () -> serve_a_page Pages.about
@@ -153,7 +161,7 @@ module Make
     | ["auth"] -> fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri  
     | [callback] when String.(equal (sub callback 0 8) "callback") -> 
       fun () -> Auth.oauth_router ~resolver ~conduit ~req ~body ~client_id:(Key_gen.client_id ()) ~client_secret:(Key_gen.client_secret ()) ~uri 
-    | _ -> fun () -> static_file_handler gs.store ("static"::uri)
+    | _ -> fun () -> static_file_handler fs uri
 
   let split_path path = 
     let dom::p = String.split_on_char '/' path in p 
@@ -180,7 +188,7 @@ module Make
     let configuration = Tls.Config.server ~certificates:(`Single cert) () in 
     Lwt.return configuration
 
-  let start server secrets resolver conduit _clock =
+  let start server secrets static resolver conduit _clock =
     tls_init secrets >>= fun cfg -> (* Create the TLS config *)
     let host = Key_gen.host () in (* Get host name *)
     let port = Key_gen.https_port () in (* Get port for https *)
@@ -190,6 +198,6 @@ module Make
     init_blog_store ~resolver ~conduit ~uri:remote >>= fun gs ->  
     sync ~gs ~resolver ~conduit  >>= fun _ -> (* Syncing blog content initially *)
     let cache = Cache.create 10 in (* Creating the cache *)
-    let callback = create domain (router gs cache resolver conduit) in
+    let callback = create domain (router gs static cache resolver conduit) in
       server tls callback
 end 

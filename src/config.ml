@@ -9,6 +9,9 @@ let git_remote =
   let doc = Key.Arg.info ~doc:"Git remote URI" ["git-remote"] in 
     Key.(create "git-remote" Arg.(opt ~stage:`Both string "https://github.com/patricoferris/mirage-site.git" doc))
 
+let fs_key = 
+  Key.(value @@ kv_ro ~group:"static" ())
+
 let tls_key = 
   Key.(value @@ kv_ro ~group:"certs" ())
 
@@ -47,6 +50,7 @@ let packages = [
 let stack = generic_stackv4 default_network 
 let cond = conduit_direct ~tls:true stack 
 let resolver = resolver_dns stack
+let static = generic_kv_ro ~key:fs_key "../static"
 let secrets = generic_kv_ro ~key:tls_key "../secrets"
 
 (******** MAIN FUNCTIONS *********)
@@ -54,7 +58,7 @@ let http =
   foreign
     ~keys
     ~packages
-    "Server.Make" (http @-> kv_ro @-> Mirage.resolver @-> Mirage.conduit @-> pclock @-> job)
+    "Server.Make" (http @-> kv_ro @-> kv_ro @-> Mirage.resolver @-> Mirage.conduit @-> pclock @-> job)
 
 let () =
-  register "run" [http $ (cohttp_server @@ conduit_direct ~tls:true stack) $ secrets $ resolver $ cond $ default_posix_clock]
+  register "run" [http $ (cohttp_server @@ conduit_direct ~tls:true stack) $ secrets $ static $ resolver $ cond $ default_posix_clock]
