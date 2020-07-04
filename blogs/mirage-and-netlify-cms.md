@@ -62,16 +62,18 @@ This is pretty much standard for an HTTP client. HTTP requests need some [header
 
 Machines are connected together on the internet by a series of protocols. The most widely used and taught is the [OSI model](https://en.wikipedia.org/wiki/OSI_model). 
 
-Remember, Mirage Unikernels are completely bare-bones. Nothing can be assumed to already exist. Whilst confusing at the beginning, it makes you appreciative of the number of assumptions you make when programming in other environments. 
+Remember, Mirage Unikernels are completely bare-bones. Nothing can be assumed to already exist. Whilst confusing at the beginning, it makes you appreciate the number of assumptions you make when programming in other environments. 
 
 In the last step, making the access token available to the Netlify CMS code, I've followed the approach laid out [here](https://github.com/vencax/netlify-cms-github-oauth-provider/blob/master/index.js#L74). It involves using the `Window.postMessage` [API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to pass the access token back to the original window. This is a bit ugly in the code and involves responding with a `<script>` which handles this. 
 
 ## Netlify CMS Configuration
 
-The last things to add our the necessary [configuration](https://www.netlifycms.org/docs/add-to-your-site/) files which explain the blogpost layout (metadata, image folder etc.) and the JavaScript and HTML files to load the initial [admin page](https://patricoferris.com/admin/) and then the React-based editing environment. These can be found [here](https://github.com/patricoferris/mirage-site/tree/master/static/admin).
+The last things to add are the necessary [configuration](https://www.netlifycms.org/docs/add-to-your-site/) files explaining the blogpost layout (metadata, image folder etc.) and the JavaScript and HTML files to load the initial [admin page](https://patricoferris.com/admin/) and then the React-based editing environment. These can be found [here](https://github.com/patricoferris/mirage-site/tree/master/static/admin).
 
-## Github Actions 
+## Syncing & Github Actions 
 
-With the Netlify CMS backend, blogposts are much easier to write and edit. The metadata is also automatically handled. For non-technical users it also removes the need for understanding git and Github! The final touch is to add a [Github Action](https://github.com/features/actions) to hit the synchronisation endpoint whenever new content is pushed to the repository. This is found [here](https://github.com/patricoferris/mirage-site/tree/master/.github/workflows).
+With the Netlify CMS backend, blogposts are much easier to write and edit. The metadata is also automatically handled. For non-technical users it also removes the need for understanding git and Github! The final touch is to add a [Github Action](https://github.com/features/actions) to hit the synchronisation endpoint whenever new content is pushed to the repository. The action can be found here [here](https://github.com/patricoferris/mirage-site/tree/master/.github/workflows).
+
+As described in the earlier post, the blog content is just an in-memory git store construct using the Mirage backend for Irmin (the only significant difference being the use of resolvers and conduits to make requests like the Cohttp client). Hitting the `sync` url triggers a `git pull` for the new content and we flush the cache. Unfortunately the underlying git protocol is [broken](https://github.com/mirage/ocaml-git/issues/364) so I'm using a [hack](https://github.com/patricoferris/irmin/commit/410e68b8c3d76f1f65ef69911400f4a05060e47a) to clear the store on every sync... in the future, when the git negotiations are fixed, we'll unlock the full power of git deltas!  
 
 
