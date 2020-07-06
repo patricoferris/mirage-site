@@ -8,12 +8,12 @@ tags:
   - netlify
   - web-dev
 ---
-This post builds on the [Unikernel Site](/blogs/unikernel-site) post where we created a simple git-based Mirage Unikernel blog. Now we'll modernise that stack by adding a content management system (CMS). 
+This post builds on the [Unikernel Site](/blogs/the-mim-stack) post where we created a simple git-based MirageOS Unikernel blog. The stack can be modernised by adding a content management system (CMS). 
 
-The tool of choice is the open-source CMS from [Netlify](https://www.netlifycms.org/). Netlify are a hosting company with a great suite of tools for managing modern [JAMStack](https://www.netlify.com/jamstack/) web applications. The CMS has great integration support with Netlify (a few clicks) but is not tied to that one service as we'll see. It is a CMS for git-based data stores offering a few backend - we'll be using Github.
+[Netlify](https://www.netlifycms.org/) CMS is a flexible, open-source CMS. Netlify are a hosting company with a great suite of tools for managing modern [JAMStack](https://www.netlify.com/jamstack/) web applications. The CMS has great integration support with Netlify (a few clicks) but is not tied to that one service as will become clear. It is a CMS for git-based data stores offering a few backends - since the blog code is on Github, that's the backend that has been used.
 
 ## OAuth and Github 
-[OAuth](https://tools.ietf.org/html/rfc6749) is an open standard for authentication on the internet. The core idea is to grant users access to information on another website without having to share passwords. The blog content of this website is held on Github and the Netlify CMS wants the ability to read and write that content. We use OAuth to authenticate on Github, we then receive a token that we combine with a client identifier and secret to get our authentication token. 
+[OAuth](https://tools.ietf.org/html/rfc6749) is an open standard for authentication on the internet. The core idea is to grant users access to information on another website without having to share passwords. The blog content of this website is held on Github and the Netlify CMS wants the ability to read and write that content. We use OAuth to authenticate on Github, with a temporary token that we combine with a client identifier and secret to get our authentication token. 
 
 The Netlify CMS expects this to be handled by a server with specific endpoints to do certain jobs. I based the Mirage solution on [this great blog post](https://tylergaw.com/articles/netlify-cms-custom-oath-provider/).
 
@@ -60,9 +60,9 @@ let ctx = C.ctx resolver conduit in
 
 This is pretty much standard for an HTTP client. HTTP requests need some [headers and a body](https://tools.ietf.org/html/rfc2616#section-4.2). The `~ctx` parameter is Mirage specific and I think worth explaining. 
 
-Machines are connected together on the internet by a series of protocols. The most widely used and taught is the [OSI model](https://en.wikipedia.org/wiki/OSI_model). 
+Machines are connected together on the internet by a series of protocols. Remember, MirageOS Unikernels are completely bare-bones. Nothing can be assumed to already exist. Whilst confusing at the beginning, it makes you appreciate the number of assumptions you make when programming in other environments. 
 
-Remember, Mirage Unikernels are completely bare-bones. Nothing can be assumed to already exist. Whilst confusing at the beginning, it makes you appreciate the number of assumptions you make when programming in other environments. 
+What happens when you try to access a URL, say *https://mirage.io*? Painting with a large stroke, your computers needs to *connect* to a computer that can send you the MirageOS website. How does it work out where this computer is? 
 
 In the last step, making the access token available to the Netlify CMS code, I've followed the approach laid out [here](https://github.com/vencax/netlify-cms-github-oauth-provider/blob/master/index.js#L74). It involves using the `Window.postMessage` [API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to pass the access token back to the original window. This is a bit ugly in the code and involves responding with a `<script>` which handles this. 
 
